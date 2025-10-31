@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-6 print:p-0" dir="rtl">
+
+  <!-- هيدر المنصة -->
+  <div class="mb-6 text-center">
+    <div class="text-xl font-bold">{{ SITE_NAME|default:"SamiLink" }}</div>
+    <div class="text-sm text-slate-500">توثيق اتفاقية خدمة</div>
+  </div>
+
+  <!-- الجزء الأول -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
+    <h2 class="font-semibold mb-3">الجزء الأول</h2>
+    <p class="leading-8">
+      أنه في يوم <strong>{{ agreement.get_day_name_ar }}</strong> الموافق
+      <strong>{{ agreement.get_date_text_ar }}</strong>،
+      اتفق الطرف الأول <strong>(العميل) {{ agreement.client_display }}</strong>
+      مع الطرف الثاني <strong>(الموظف) {{ agreement.employee_display }}</strong>
+      على تنفيذ <strong>“{{ agreement.title }}”</strong>
+      بمبلغ <strong>{{ agreement.total_amount }} ر.س</strong>
+      ومدة تنفيذ <strong>{{ agreement.duration_days }} يومًا</strong>.
+    </p>
+  </div>
+
+  <!-- الجزء الثاني: البنود (جاهزة + مخصصة) -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
+    <h2 class="font-semibold mb-3">الجزء الثاني: البنود</h2>
+
+    <ol class="list-decimal pr-6 space-y-2">
+      {% for item in agreement.clause_items.all %}
+        <li class="leading-7">
+          {% if item.clause %}
+            <strong>{{ item.clause.title }}:</strong> {{ item.clause.body }}
+          {% else %}
+            {{ item.custom_text }}
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="text-slate-500">لا توجد بنود مثبتة بعد.</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <!-- الجزء الثالث: التوقيعات -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
+    <h2 class="font-semibold mb-6">الجزء الثالث: التوقيعات</h2>
+    <div class="grid grid-cols-2 gap-8">
+      <div class="border-t pt-6">
+        <div class="text-sm text-slate-500 mb-1">توقيع الطرف الأول (العميل)</div>
+        <div class="font-semibold">{{ agreement.client_display }}</div>
+      </div>
+      <div class="border-t pt-6">
+        <div class="text-sm text-slate-500 mb-1">توقيع الطرف الثاني (الموظف)</div>
+        <div class="font-semibold">{{ agreement.employee_display }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- أزرار -->
+  <div class="flex flex-wrap gap-3 justify-between print:hidden">
+    <div class="flex gap-2">
+      {% if user.is_authenticated and (user.is_staff or user.is_superuser) %}
+        <a class="btn btn-ghost" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a>
+      {% endif %}
+      <a class="btn btn-ghost" href="{% url 'agreements:edit' agreement.pk %}">تحرير</a>
+    </div>
+    <button onclick="window.print()" class="btn btn-primary">طباعة</button>
+  </div>
+</div>
+{% endblock %}

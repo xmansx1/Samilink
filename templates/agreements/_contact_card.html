@@ -1,0 +1,163 @@
+{# components/_user_card.html #}
+{# متغيّرات اختيارية يمكن تمريرها مع include:
+   - context_msg: نص افتراضي لرسالة واتساب (سيمرّ عبر urlencode)
+   - show_actions: افتراضي True لإظهار أزرار التفاعل
+   - accent: 'indigo'/'emerald' ... لتخصيص التدرّج اللوني (افتراضي indigo-sky)
+#}
+
+{% with _show_actions=show_actions|default_if_none:True %}
+{% with _context_msg=context_msg|default:"مرحبًا، بخصوص طلبك على المنصّة" %}
+{% with _uid="uc-"|add:(user.id|default:user.email|default:"x")|slugify %}
+
+<div id="{{ _uid }}" class="rounded-2xl border bg-white/70 backdrop-blur shadow-glass-lg overflow-hidden" data-component="user-card">
+  <!-- هيدر متدرّج باسم المستخدم والدور (إن وُجد) -->
+  <div class="px-5 py-4 bg-gradient-to-l from-indigo-50 to-sky-50 border-b">
+    <div class="flex items-center gap-3">
+      <!-- أفاتار -->
+      <div class="relative shrink-0">
+        {% if user.avatar_url %}
+          <img src="{{ user.avatar_url }}" alt="صورة {{ user.name|default:user.email|default:'المستخدم' }}"
+               class="h-12 w-12 rounded-full ring-2 ring-white object-cover"
+               loading="lazy" referrerpolicy="no-referrer">
+        {% else %}
+          <div class="h-12 w-12 rounded-full bg-indigo-600 text-white grid place-items-center text-lg font-bold select-none">
+            {% if user.name %}{{ user.name|first }}{% else %}👤{% endif %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="text-slate-900 font-extrabold text-base md:text-lg truncate">
+            {{ user.name|default:user.email|default:"مستخدم" }}
+          </h3>
+          {% if user.role %}
+            <span class="px-2 py-0.5 rounded-xl text-[11px] md:text-xs bg-slate-100 text-slate-700">
+              {{ user.role }}
+            </span>
+          {% endif %}
+        </div>
+        {% if user.email %}
+          <p class="text-slate-600 text-xs md:text-sm truncate">{{ user.email }}</p>
+        {% else %}
+          <p class="text-slate-500 text-xs">لا يوجد بريد مسجّل</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- جسم البطاقة -->
+  <div class="p-5 space-y-4">
+
+    <!-- معلومات سريعة -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="p-3 rounded-xl bg-slate-50 border">
+        <div class="text-xs text-slate-500">البريد الإلكتروني</div>
+        <div class="mt-0.5 font-medium text-slate-800 break-all">
+          {{ user.email|default:"— غير متوفر —" }}
+        </div>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-50 border">
+        <div class="text-xs text-slate-500">رقم الجوال</div>
+        <div class="mt-0.5 font-medium text-slate-800">
+          {% if user.phone %}{{ user.phone }}{% else %}— غير متوفر —{% endif %}
+        </div>
+      </div>
+      {% if user.company %}
+      <div class="p-3 rounded-xl bg-slate-50 border">
+        <div class="text-xs text-slate-500">المنظمة</div>
+        <div class="mt-0.5 font-medium text-slate-800">
+          {{ user.company }}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if _show_actions %}
+    <!-- أزرار التفاعل -->
+    <div class="flex flex-wrap items-center gap-2">
+      {% if user.email %}
+        <a href="mailto:{{ user.email }}"
+           class="px-3 py-2 rounded-xl border hover:bg-slate-50 text-slate-700"
+           rel="noopener">
+          بريد إلكتروني
+        </a>
+        <button type="button"
+                class="px-3 py-2 rounded-xl border hover:bg-slate-50 text-slate-700"
+                data-copy="{{ user.email }}"
+                aria-label="نسخ البريد الإلكتروني">
+          نسخ البريد
+        </button>
+      {% endif %}
+
+      {% if user.phone %}
+        {# رابط واتساب عبر السيرفر مع رسالة سياقية قابلة للتمرير من include #}
+        <a href="{% url 'core:whatsapp_user' user.id %}?msg={{ _context_msg|urlencode }}"
+           class="px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+           data-wp-msg="{{ _context_msg }}">
+          واتساب
+        </a>
+        <a href="tel:{{ user.phone|urlencode }}"
+           class="px-3 py-2 rounded-xl border hover:bg-slate-50 text-slate-700"
+           rel="noopener">
+          اتصال
+        </a>
+        <button type="button"
+                class="px-3 py-2 rounded-xl border hover:bg-slate-50 text-slate-700"
+                data-copy="{{ user.phone }}"
+                aria-label="نسخ رقم الجوال">
+          نسخ الجوال
+        </button>
+      {% else %}
+        <span class="px-3 py-2 rounded-xl bg-slate-100 text-slate-500 text-xs">
+          لا يتوفر رقم واتساب
+        </span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- سكربت خفيف ذاتي-التحديد لكل بطاقة عبر الـ id (يدعم تعدد النسخ دون تعارض) -->
+<script>
+(function () {
+  var root = document.getElementById('{{ _uid }}');
+  if (!root) return;
+
+  // نسخ إلى الحافظة
+  var btns = root.querySelectorAll('[data-copy]');
+  if (btns.length && navigator.clipboard) {
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.getAttribute('data-copy') || '';
+        if (!val) return;
+        navigator.clipboard.writeText(val).then(function () {
+          toast('تم النسخ ✓');
+        }).catch(function () {
+          // fallback بسيط
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = val; document.body.appendChild(ta);
+            ta.select(); document.execCommand('copy'); ta.remove();
+            toast('تم النسخ ✓');
+          } catch (e) {}
+        });
+      });
+    });
+  }
+
+  // دالة Toast محلية
+  function toast(msg) {
+    var t = document.createElement('div');
+    t.textContent = msg || '';
+    t.setAttribute('role', 'status');
+    t.setAttribute('aria-live', 'polite');
+    t.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-3 py-1.5 rounded-xl shadow z-[60]';
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 1400);
+  }
+})();
+</script>
+
+{% endwith %}{% endwith %}{% endwith %}

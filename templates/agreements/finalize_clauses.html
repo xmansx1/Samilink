@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto p-6" dir="rtl">
+  <h1 class="text-2xl font-bold mb-4">تثبيت بنود الاتفاقية — {{ agreement.title }}</h1>
+
+  <form method="post" class="space-y-6">
+    {% csrf_token %}
+    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow">
+      <h2 class="font-semibold mb-3">البنود الجاهزة</h2>
+      {{ form.clauses }}
+    </div>
+
+    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow">
+      <h2 class="font-semibold mb-3">بنود مخصصة (اختياري)</h2>
+      <p class="text-sm text-slate-500 mb-2">اكتب كل بند في سطر مستقل.</p>
+      {{ form.custom_clauses }}
+    </div>
+
+    <div class="flex gap-3">
+      <button type="submit" class="btn btn-primary">حفظ البنود</button>
+      <a href="{% url 'agreements:detail' agreement.pk %}" class="btn btn-ghost">رجوع</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

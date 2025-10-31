@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+{% block title %}طلب #{{ req.pk }}{% endblock %}
+{% block content %}
+<section class="py-8 max-w-6xl mx-auto rtl" dir="rtl">
+
+  <div class="rounded-2xl border bg-white/80 backdrop-blur shadow-glass-lg overflow-hidden">
+
+    <!-- ===== Header ===== -->
+    <div class="p-6 border-b bg-gradient-to-l from-indigo-50 to-sky-50">
+      <div class="flex items-start justify-between gap-6">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- إبراز العنوان -->
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
+              {{ req.title }}
+            </h1>
+            <span class="px-2 py-1 rounded-lg text-xs border bg-white text-slate-700">#{{ req.pk }}</span>
+            <span class="px-2 py-1 rounded-lg text-xs border bg-white text-slate-700">
+              {{ req.get_status_display|default:req.status }}
+            </span>
+            {% if req.agreement_overdue %}
+              <span class="px-2 py-1 rounded-lg text-xs bg-red-50 text-red-700 border border-red-200">تجاوزت مهلة إرسال الاتفاقية</span>
+            {% endif %}
+          </div>
+          <p class="text-slate-600 text-sm mt-2">
+            العميل: <b>{{ req.client }}</b>
+            {% if req.assigned_employee %} — الموظف: <b>{{ req.assigned_employee }}</b>{% endif %}
+          </p>
+        </div>
+        <div class="text-slate-500 text-sm shrink-0">
+          آخر تحديث: {{ req.updated_at|date:"Y-m-d H:i" }}
+        </div>
+      </div>
+    </div>
+
+    <div class="p-6 space-y-6">
+
+      <!-- ===== لوحة تحكم المدير العام (admin-only) ===== -->
+      {% if request.user.is_authenticated %}
+        {% if request.user.role == "admin" or request.user.is_staff %}
+        <div class="rounded-xl border bg-amber-50 p-4">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-slate-800 font-semibold">لوحة تحكم المدير العام</div>
+          </div>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+
+            <!-- إرجاع كجديد -->
+            <form method="post" action="{% url 'marketplace:admin_request_reset_to_new' req.pk %}"
+                  onsubmit="return confirm('سيُعاد الطلب كجديد: سيتم إزالة الإسناد ورفض العروض الحالية للأرشفة. تأكيد؟');">
+              {% csrf_token %}
+              <button class="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50">إرجاع كجديد</button>
+            </form>
+
+            <!-- إعادة إسناد لموظف آخر -->
+            <a class="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50"
+               href="{% url 'marketplace:admin_request_reassign' req.pk %}">
+              إعادة إسناد لموظف آخر
+            </a>
+
+            <!-- شطب نهائي -->
+            <form method="post" action="{% url 'marketplace:admin_request_delete' req.pk %}"
+                  onsubmit="return confirm('سيتم شطب الطلب نهائيًا ولا يمكن التراجع. تأكيد؟');">
+              {% csrf_token %}
+              <button class="px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700">شطب نهائي</button>
+            </form>
+
+          </div>
+          <p class="text-xs text-slate-600 mt-2">هذه الإجراءات متاحة للمدير العام فقط.</p>
+        </div>
+        {% endif %}
+      {% endif %}
+
+      <!-- 🟦 تقديم عرض (تنبيه: عرض واحد فقط) -->
+      {% if can_offer %}
+      <div class="rounded-xl border bg-indigo-50 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-slate-700 text-sm">
+            يمكنك تقديم <b>عرض واحد فقط</b> لهذا الطلب. حالة الطلب الحالية: جديد.
+          </div>
+          <!-- استخدمنا المسار المُحدّث: offer_create_cbv -->
+          <a class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
+             href="{% url 'marketplace:offer_create_cbv' req.pk %}">
+            تقديم عرض
+          </a>
+        </div>
+      </div>
+      {% elif my_offer %}
+      <div class="rounded-xl border bg-slate-50 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-slate-900 font-bold truncate">عرضك المقدم</div>
+            <div class="text-slate-500 text-sm truncate">
+              الحالة: {{ my_offer.get_status_display|default:my_offer.status }} — المدة: {{ my_offer.proposed_duration_days }} — المبلغ: {{ my_offer.proposed_price }}
+            </div>
+          </div>
+          <span class="px-2 py-1 rounded-lg text-xs border bg-white text-slate-700">قدّمت عرضًا بالفعل</span>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- بطاقات معلومات سريعة: تمييز قيم العميل -->
+      <div class="grid sm:grid-cols-2 gap-4">
+
+        <!-- بطاقة المدة/المبلغ (نُبرز قيمة العميل أولاً) -->
+        <div class="p-4 rounded-xl border bg-white">
+          <div class="text-slate-500 text-sm mb-2">المدة/المبلغ</div>
+
+          <div class="grid grid-cols-1 gap-3">
+            <!-- قيم العميل المبدئية -->
+            <div class="rounded-lg border border-sky-200 bg-sky-50 p-3">
+              <div class="text-xs text-sky-700 mb-1">مقدّمة من العميل</div>
+              <div class="flex items-center gap-4 text-slate-800">
+                <div>المدة: <b>{{ req.estimated_duration_days|default:"—" }}</b> يوم</div>
+                <div>المبلغ: <b>{{ req.estimated_price|default:"—" }}</b> <span class="text-xs text-slate-500">ريال</span></div>
+              </div>
+            </div>
+
+            <!-- إن كان هناك عرض مختار -->
+            {% if req.selected_offer %}
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div class="text-xs text-amber-800 mb-1">العرض المختار</div>
+              <div class="flex items-center gap-4 text-slate-800">
+                <div>المدة: <b>{{ req.selected_offer.proposed_duration_days }}</b> يوم</div>
+                <div>المبلغ: <b>{{ req.selected_offer.proposed_price }}</b> <span class="text-xs text-slate-500">ريال</span></div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- إن وُجدت اتفاقية -->
+            {% if req.agreement %}
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <div class="text-xs text-emerald-800 mb-1">الاتفاقية</div>
+              <div class="flex items-center gap-4 text-slate-800">
+                <div>المدة: <b>{{ req.agreement.duration_days }}</b> يوم</div>
+                <div>المبلغ: <b>{{ req.agreement.total_amount }}</b> <span class="text-xs text-slate-500">ريال</span></div>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- الموظف المسند -->
+        <div class="rounded-xl border p-4 bg-slate-50">
+          <div class="font-bold text-slate-800 mb-1">الموظف المسند</div>
+          <div class="text-slate-700">
+            {% if req.assigned_employee %}
+              {{ req.assigned_employee }}
+            {% elif req.selected_offer %}
+              {{ req.selected_offer.employee }}
+            {% else %}
+              — لا يوجد إسناد بعد —
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- تفاصيل الطلب (كما كتبها العميل بالأسطر) -->
+      <div class="rounded-xl border bg-white p-4">
+        <div class="text-slate-500 text-sm mb-2">التفاصيل</div>
+        <div class="prose prose-slate max-w-none whitespace-pre-line text-slate-800">
+          {{ req.details|default:"—"|urlize|linebreaksbr }}
+        </div>
+      </div>
+
+      <!-- الروابط -->
+      {% if req.links %}
+      <div class="rounded-xl border bg-white p-4">
+        <div class="text-slate-500 text-sm mb-2">روابط مرتبطة</div>
+        <div class="whitespace-pre-line text-slate-800">{{ req.links|urlize|linebreaksbr }}</div>
+      </div>
+      {% endif %}
+
+      <!-- ===================== بيانات التواصل (تظهر فقط بعد قبول العرض) ===================== -->
+      {% if req.status != 'new' %}
+      <div class="rounded-2xl border bg-white p-4">
+        <div class="flex items-center justify-between mb-4">
+          <div class="text-slate-800 font-bold">بيانات التواصل</div>
+          <div class="text-xs text-slate-500">تظهر بعد اختيار عرض من العميل</div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+
+          <!-- بطاقة العميل -->
+          <div class="rounded-xl border p-4 bg-slate-50">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="i-lucide:user"></span>
+              <div class="font-semibold text-slate-800">العميل</div>
+            </div>
+            <div class="space-y-2 text-slate-700">
+              <div>الاسم: <b>{{ req.client }}</b></div>
+              {% if req.client.phone %}
+              <div class="flex items-center gap-2">
+                <span>الجوال:</span>
+                <a class="text-indigo-700 hover:underline" dir="ltr" href="tel:{{ req.client.phone }}">{{ req.client.phone }}</a>
+                <a class="text-emerald-700 hover:underline" target="_blank" rel="noopener"
+                   href="https://api.whatsapp.com/send?phone={{ req.client.phone|urlencode }}">واتساب</a>
+              </div>
+              {% endif %}
+              {% if req.client.email %}
+              <div>الإيميل:
+                <a class="text-indigo-700 hover:underline" href="mailto:{% filter force_escape %}{{ req.client.email }}{% endfilter %}">
+                  {{ req.client.email }}
+                </a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- بطاقة الموظف المسند -->
+          {% if req.assigned_employee or req.selected_offer %}
+          <div class="rounded-xl border p-4 bg-slate-50">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="i-lucide:badge-check"></span>
+              <div class="font-semibold text-slate-800">الموظف المسند</div>
+            </div>
+            <div class="space-y-2 text-slate-700">
+              <div>الاسم:
+                <b>
+                  {% if req.assigned_employee %}{{ req.assigned_employee }}{% else %}{{ req.selected_offer.employee }}{% endif %}
+                </b>
+              </div>
+              {% if req.assigned_employee and req.assigned_employee.phone %}
+              <div class="flex items-center gap-2">
+                <span>الجوال:</span>
+                <a class="text-indigo-700 hover:underline" dir="ltr" href="tel:{{ req.assigned_employee.phone }}">{{ req.assigned_employee.phone }}</a>
+                <a class="text-emerald-700 hover:underline" target="_blank" rel="noopener"
+                   href="https://api.whatsapp.com/send?phone={{ req.assigned_employee.phone|urlencode }}">واتساب</a>
+              </div>
+              {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.phone %}
+              <div class="flex items-center gap-2">
+                <span>الجوال:</span>
+                <a class="text-indigo-700 hover:underline" dir="ltr" href="tel:{{ req.selected_offer.employee.phone }}">{{ req.selected_offer.employee.phone }}</a>
+                <a class="text-emerald-700 hover:underline" target="_blank" rel="noopener"
+                   href="https://api.whatsapp.com/send?phone={{ req.selected_offer.employee.phone|urlencode }}">واتساب</a>
+              </div>
+              {% endif %}
+
+              {% if req.assigned_employee and req.assigned_employee.email %}
+              <div>الإيميل:
+                <a class="text-indigo-700 hover:underline" href="mailto:{% filter force_escape %}{{ req.assigned_employee.email }}{% endfilter %}">
+                  {{ req.assigned_employee.email }}
+                </a>
+              </div>
+              {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.email %}
+              <div>الإيميل:
+                <a class="text-indigo-700 hover:underline" href="mailto:{% filter force_escape %}{{ req.selected_offer.employee.email }}{% endfilter %}">
+                  {{ req.selected_offer.employee.email }}
+                </a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+      {% endif %}
+      <!-- ================================================================================ -->
+
+      <!-- الملاحظات -->
+      <div class="rounded-xl border bg-white p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-slate-500 text-sm">الملاحظات</div>
+        </div>
+
+        <div class="space-y-3">
+          {% for n in req.notes.all %}
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <div class="text-xs text-slate-500 mb-1">{{ n.author }} — {{ n.created_at|date:"Y-m-d H:i" }}</div>
+            <div class="text-slate-800 whitespace-pre-line">{{ n.text }}</div>
+          </div>
+          {% empty %}
+          <div class="text-slate-500 text-sm">لا توجد ملاحظات بعد.</div>
+          {% endfor %}
+        </div>
+
+        <form class="mt-4" method="post" action="{% url 'marketplace:request_add_note' req.pk %}">
+          {% csrf_token %}
+          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <textarea name="text" rows="2" class="input" placeholder="أضف ملاحظة"></textarea>
+            <button class="btn btn-primary">حفظ</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- العروض (تفاصيل للعميل مع قبول/رفض) -->
+      <div class="rounded-xl border bg-white p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-slate-500 text-sm">العروض</div>
+        </div>
+
+        <div class="space-y-3">
+          {% for off in req.offers.all %}
+          <div class="rounded-lg border p-3 {% if off.status == 'selected' %}bg-green-50 border-green-200{% else %}bg-slate-50{% endif %}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="text-slate-900 font-bold">{{ off.employee }}</div>
+                <div class="text-slate-600 text-sm mt-1">
+                  الحالة: {{ off.get_status_display|default:off.status }}
+                </div>
+                <!-- تفاصيل العرض كما كتبها الموظف -->
+                {% if off.note %}
+                <div class="mt-2 text-slate-800 whitespace-pre-line">
+                  {{ off.note|urlize|linebreaksbr }}
+                </div>
+                {% endif %}
+                <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                  <span class="px-2 py-1 rounded-lg border bg-white text-slate-700">المدة: <b>{{ off.proposed_duration_days }}</b> يوم</span>
+                  <span class="px-2 py-1 rounded-lg border bg-white text-slate-700">المبلغ: <b>{{ off.proposed_price }}</b> ريال</span>
+                </div>
+              </div>
+
+              <!-- أزرار للعميل لاختيار/رفض عندما الطلب جديد -->
+              <div class="shrink-0">
+                {% if req.client_id == request.user.id and req.status == 'new' and off.status != 'selected' %}
+                  <form method="post" action="{% url 'marketplace:offer_select_fn' off.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-primary">اختيار العرض</button>
+                  </form>
+                {% elif off.status == 'selected' %}
+                  <span class="px-2 py-1 rounded-lg text-xs bg-green-100 text-green-800 border border-green-200">العرض المختار</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="text-slate-500 text-sm">لا توجد عروض بعد.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- ===================== الاتفاقية ===================== -->
+      {% if req.agreement %}
+        <div class="rounded-xl border bg-white p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-slate-500 text-sm">الاتفاقية</div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-1 rounded-lg text-xs bg-slate-100 border text-slate-700">رقم: {{ req.agreement.pk }}</span>
+              {% if req.agreement.status %}
+                <span class="px-2 py-1 rounded-lg text-xs border
+                            {% if req.agreement.status == 'accepted' %}bg-green-50 text-green-800 border-green-200
+                            {% elif req.agreement.status == 'rejected' %}bg-rose-50 text-rose-700 border-rose-200
+                            {% else %}bg-amber-50 text-amber-800 border-amber-200{% endif %}">
+                  {{ req.agreement.get_status_display|default:req.agreement.status }}
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <a class="btn btn-secondary" href="{% url 'agreements:open_by_request' req.pk %}">عرض/تحرير الاتفاقية</a>
+
+            {% if request.user.id == req.client_id %}
+              {% if req.status == "agreement_pending" or req.agreement.status == "pending" %}
+                <form action="{% url 'agreements:accept_by_request' req.pk %}" method="post" class="inline">
+                  {% csrf_token %}
+                  <button class="btn btn-success">موافقة</button>
+                </form>
+                <a class="btn btn-danger" href="{% url 'agreements:reject_by_request' req.pk %}">رفض</a>
+              {% endif %}
+            {% endif %}
+
+            {% if req.agreement.status == "accepted" %}
+              <span class="text-xs text-slate-500">الاتفاقية مقبولة — لا يمكن تعديلها.</span>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        {% if req.status == "offer_selected" %}
+          {% if request.user.id == req.assigned_employee_id or request.user.role == "admin" %}
+          <div class="rounded-xl border bg-white p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-slate-500 text-sm">الاتفاقية</div>
+            </div>
+            <a class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
+               href="{% url 'agreements:open_by_request' req.pk %}">
+              إنشاء/فتح الاتفاقية
+            </a>
+            <p class="mt-2 text-xs text-slate-500">يمكن للموظف المسند أو المدير إنشاء الاتفاقية بعد اختيار عرض.</p>
+          </div>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+      <!-- ===================================================== -->
+
+      <!-- المرفقات (إن كانت مفعلة) -->
+      {% if uploads %}
+      <div class="rounded-xl border bg-white p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-slate-500 text-sm">المرفقات</div>
+        </div>
+        <ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {% for up in uploads %}
+          <li id="up-{{ up.id }}" class="rounded-lg border bg-slate-50 p-3">
+            <div class="flex items-center justify_between gap-2">
+              <a class="truncate text-indigo-700 hover:underline" href="{{ up.file.url }}" target="_blank" rel="noopener">تحميل/عرض</a>
+              {% if up.can_delete %}
+              <form method="post" action="{% url 'uploads:delete' up.id %}">
+                {% csrf_token %}
+                <button class="text-rose-600 text-sm hover:underline">حذف</button>
+              </form>
+              {% endif %}
+            </div>
+            <div class="text-xs text-slate-500 mt-1">{{ up.created_at|date:"Y-m-d H:i" }}</div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <!-- المحادثة (إن كانت مفعلة) -->
+      {% if thread_embed_url %}
+      <div class="rounded-xl border bg-white p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-slate-500 text-sm">المحادثة</div>
+        </div>
+        <iframe src="{{ thread_embed_url }}" class="w-full h-[540px] rounded-xl border"></iframe>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</section>
+{% endblock %}

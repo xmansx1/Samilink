@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}شروط الاستخدام{% endblock %}
+{% block content %}
+<section class="py-10 max-w-4xl mx-auto">
+  <h1 class="text-3xl font-extrabold mb-4">شروط الاستخدام</h1>
+  <p class="text-slate-600 mb-6">باستخدامك لمنصّة SamiLink فإنك توافق على الشروط التالية:</p>
+
+  <div class="space-y-6 leading-8">
+    <section>
+      <h2 class="text-xl font-bold mb-2">1) الحسابات والأدوار</h2>
+      <p class="text-slate-700">
+        الحسابات تشمل: عميل، موظف، مالية، مدير عام. يلتزم المستخدم بالحفاظ على سرية بيانات الدخول وعدم إساءة استخدام الصلاحيات.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">2) دورة العمل</h2>
+      <p class="text-slate-700">
+        الطلبات والعروض والاتفاقيات والمراحل والفواتير والنزاعات تُدار وفق السياسات الزمنية (SLAs) المعتمدة. أي تجاوز للمهل قد ينتج عنه تذكيرات أو إجراءات آلية بحسب الوثيقة.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">3) المدفوعات والصرف</h2>
+      <ul class="list-disc pr-6 text-slate-700">
+        <li>إصدار الفواتير والتحصيل يتم عبر القنوات المعتمدة.</li>
+        <li>الصرف للموظف يتم بعد نافذة أمان 3 أيام من الدفع المؤكد، ما لم يوجد نزاع مفتوح.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">4) النزاعات</h2>
+      <p class="text-slate-700">
+        فتح النزاع يجمّد الدفعات تلقائيًا حتى قرار المدير العام. القرارات ملزمة ضمن سياسات المنصّة.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">5) المحتوى والمرفقات</h2>
+      <p class="text-slate-700">
+        يتحمّل المستخدم مسؤولية قانونية عن المحتوى والمرفقات المقدّمة. يمنع رفع مواد مخالِفة للقانون أو حقوق الملكية الفكرية.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">6) حدود المسؤولية</h2>
+      <p class="text-slate-700">
+        تُقدَّم الخدمة كما هي في الحدود التي يسمح بها القانون. لا تتحمّل المنصّة مسؤولية خسائر غير مباشرة ناتجة عن إساءة استخدام الخدمة.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">7) تعديلات الشروط</h2>
+      <p class="text-slate-700">
+        قد نحدّث هذه الشروط عند الحاجة، وستكون النسخة المنشورة على هذه الصفحة هي السارية.
+      </p>
+    </section>
+
+    <p class="text-sm text-slate-500">تاريخ النفاذ: {{ now|date:"Y-m-d" }}</p>
+  </div>
+</section>
+{% endblock %}

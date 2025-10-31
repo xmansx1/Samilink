@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}تقديم عرض{% endblock %}
+{% block content %}
+<section class="max-w-3xl mx-auto py-8 rtl" dir="rtl">
+
+  <div class="rounded-2xl border bg-white/80 backdrop-blur shadow-glass-lg overflow-hidden">
+    <!-- رأس -->
+    <div class="p-6 border-b bg-gradient-to-l from-indigo-50 to-sky-50">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">تقديم عرض</h1>
+          <p class="text-slate-600 text-sm mt-1">
+            يمكنك تقديم <b>عرض واحد فقط</b> على هذا الطلب. إذا قبل العميل عرضك سيُسنَد الطلب لك تلقائيًا.
+          </p>
+        </div>
+        <a href="javascript:history.back()" class="px-4 py-2 rounded-xl border hover:bg-slate-50 text-slate-700">رجوع</a>
+      </div>
+    </div>
+
+    <!-- جسم -->
+    <div class="p-6">
+
+      {% if form.non_field_errors %}
+        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800 text-sm">
+          {% for e in form.non_field_errors %}• {{ e }}<br>{% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- يرسل لنفس العنوان الخاص بـ OfferCreateView -->
+      <form id="offerForm" method="post" class="space-y-5">
+        {% csrf_token %}
+
+        <!-- تفاصيل العرض (note) -->
+        <div>
+          <label for="id_note" class="block mb-2 font-medium text-slate-800">تفاصيل العرض</label>
+          <textarea id="id_note" name="note" rows="6"
+                    class="w-full rounded-xl border px-4 py-3 leading-7 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    minlength="10" maxlength="2000" required
+                    placeholder="اشرح نطاق العمل، المخرجات، الافتراضات وأي ملاحظات للعميل">{{ form.note.value|default_if_none:'' }}</textarea>
+          {% if form.note.errors %}
+            <p class="mt-2 text-sm text-rose-700">{% for e in form.note.errors %}• {{ e }} {% endfor %}</p>
+          {% endif %}
+          <div class="mt-1 text-xs text-slate-500"><span id="descCount">0</span>/2000 حرف</div>
+        </div>
+
+        <!-- الشبكة: المدة + السعر -->
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label for="id_proposed_duration_days" class="block mb-2 font-medium text-slate-800">
+              المدة المقترحة (أيام)
+            </label>
+            <input id="id_proposed_duration_days" type="number" name="proposed_duration_days"
+                   class="w-full rounded-xl border px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                   min="1" step="1" required
+                   value="{{ form.proposed_duration_days.value|default:'7' }}">
+            {% if form.proposed_duration_days.errors %}
+              <p class="mt-2 text-sm text-rose-700">{% for e in form.proposed_duration_days.errors %}• {{ e }} {% endfor %}</p>
+            {% endif %}
+            <p class="mt-1 text-xs text-slate-500">اختر قيمة واقعية لتنفيذ العمل.</p>
+          </div>
+
+          <div>
+            <label for="id_proposed_price" class="block mb-2 font-medium text-slate-800">
+              السعر المقترح
+            </label>
+            <input id="id_proposed_price" type="number" name="proposed_price"
+                   class="w-full rounded-xl border px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                   min="0" step="0.01" required
+                   value="{{ form.proposed_price.value|default:'0' }}">
+            {% if form.proposed_price.errors %}
+              <p class="mt-2 text-sm text-rose-700">{% for e in form.proposed_price.errors %}• {{ e }} {% endfor %}</p>
+            {% endif %}
+            <div class="mt-1 text-xs text-slate-500">
+              <span>معاينة: </span><span id="pricePreview">—</span>
+            </div>
+            <p class="mt-1 text-xs text-slate-500">أدخل السعر شاملًا للضرائب/الرسوم إن لزم.</p>
+          </div>
+        </div>
+
+        <!-- أزرار -->
+        <div class="pt-2 flex items-center gap-3">
+          <button id="submitBtn" type="submit"
+                  class="px-5 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500">
+            إرسال العرض
+          </button>
+
+          <a href="javascript:history.back()"
+             class="px-5 py-3 rounded-xl border hover:bg-slate-50 text-slate-700">
+            العودة
+          </a>
+        </div>
+
+        <p class="text-xs text-slate-500">
+          إذا لم ينتقل النموذج بعد الضغط، راجع رسائل المتصفّح أعلى الحقول (قد يمنع الإرسال لعدم اكتمال المدخلات).
+        </p>
+      </form>
+    </div>
+  </div>
+
+</section>
+
+<!-- عدّاد النص + تعطيل الزر بعد بدء الإرسال + معاينة السعر -->
+<script>
+(function () {
+  var form = document.getElementById('offerForm');
+  var ta = document.getElementById('id_note');
+  var cnt = document.getElementById('descCount');
+  var btn = document.getElementById('submitBtn');
+  var priceInput = document.getElementById('id_proposed_price');
+  var pricePreview = document.getElementById('pricePreview');
+
+  function updateCount() {
+    if (!ta || !cnt) return;
+    var max = parseInt(ta.getAttribute('maxlength')) || 2000;
+    var len = (ta.value || '').length;
+    cnt.textContent = len + '/' + max;
+  }
+  if (ta) { updateCount(); ta.addEventListener('input', updateCount); }
+
+  function formatSar(v) {
+    if (v === '' || v === null || isNaN(v)) return '—';
+    try { return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(parseFloat(v)); }
+    catch (e) { return v; }
+  }
+  function updatePrice() {
+    if (!priceInput || !pricePreview) return;
+    pricePreview.textContent = formatSar(priceInput.value);
+  }
+  if (priceInput) {
+    priceInput.addEventListener('input', updatePrice);
+    updatePrice();
+  }
+
+  if (form && btn) {
+    form.addEventListener('submit', function () {
+      btn.setAttribute('disabled', 'disabled');
+      btn.classList.add('opacity-70', 'cursor-not-allowed');
+    });
+  }
+})();
+</script>
+{% endblock %}

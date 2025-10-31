@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+.env
+db.sqlite3
+media/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3-journal
+/static/
+/media/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Windows
+Thumbs.db
+desktop.ini

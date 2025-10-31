@@ -1,0 +1,411 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>{% block title %}SamiLink{% endblock %}</title>
+  <meta name="description" content="SamiLink — منصّة مؤسسية لإدارة الخدمات التقنية: طلبات، عروض، اتفاقيات، مراحل، فواتير، ونزاعات." />
+
+  <link rel="icon" href="{% static 'favicon.ico' %}" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { 'sans': ['Cairo','ui-sans-serif','system-ui'] },
+          colors: {
+            primary: { 50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e' },
+            secondary:{ 50:'#f8fafc',100:'#f1f5f9',200:'#e2e8f0',300:'#cbd5e1',400:'#94a3b8',500:'#64748b',600:'#475569',700:'#334155',800:'#1e293b',900:'#0f172a' },
+            success: { 50:'#ecfdf5',500:'#10b981',600:'#059669' },
+            danger:  { 50:'#fef2f2',500:'#ef4444',600:'#dc2626' },
+            warning: { 50:'#fffbeb',500:'#f59e0b',600:'#d97706' }
+          },
+          animation: {
+            'fade-in': 'fadeIn .5s ease-in-out',
+            'slide-up': 'slideUp .25s ease-out'
+          },
+          keyframes: {
+            fadeIn: { '0%':{opacity:0}, '100%':{opacity:1} },
+            slideUp: { '0%':{transform:'translateY(8px)',opacity:0}, '100%':{transform:'translateY(0)',opacity:1} }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html { color-scheme: light dark; scroll-behavior: smooth; }
+    body { transition: background-color .3s, color .3s; }
+    .container-xl { max-width: 1240px; }
+
+    .input { @apply w-full rounded-xl border border-slate-200 dark:border-slate-700 p-3 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white transition-colors; }
+
+    .nav-link { @apply px-4 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium; }
+    .nav-cta  { @apply px-5 py-2.5 rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 transition-all duration-300 shadow-md hover:shadow-lg font-medium; }
+    .active   { @apply bg-primary-50 text-primary-800 dark:bg-primary-900/20 dark:text-primary-200 ring-1 ring-primary-200; }
+
+    .glass-effect { @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200/50 dark:border-slate-700/50; }
+    .card { @apply bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300 hover:shadow-md; }
+    .gradient-text { @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent; }
+    .header-scrolled { @apply shadow-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg; }
+
+    /* شارة الإشعار */
+    .notif-dot { position:absolute; inset-inline-start:.15rem; top:.15rem; }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans selection:bg-primary-600 selection:text-white min-h-screen flex flex-col">
+  <!-- تبديل الثيم -->
+  <button id="themeToggle" class="fixed bottom-6 left-6 z-50 w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-yellow-400 hover:scale-110 transition-all duration-300" aria-label="تبديل الوضع">
+    <i class="fas fa-moon dark:hidden"></i>
+    <i class="fas fa-sun hidden dark:block"></i>
+  </button>
+
+  <!-- HEADER -->
+  <header id="appHeader" class="sticky top-0 z-40 glass-effect transition-all duration-300">
+    <div class="mx-auto px-4 container-xl">
+      <div class="h-20 flex items-center justify-between gap-6">
+        <!-- Logo -->
+        <a href="{% url 'website:home' %}" class="flex items-center gap-3 group shrink-0">
+          <div class="w-12 h-12 rounded-2xl grid place-items-center bg-gradient-to-br from-primary-600 to-primary-800 text-white shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+            <i class="fas fa-link text-lg"></i>
+          </div>
+          <div class="leading-tight">
+            <div class="font-extrabold text-2xl -mb-1 gradient-text">SamiLink</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">منصّة الخدمات التقنية</div>
+          </div>
+        </a>
+
+        <!-- Desktop Nav -->
+        <nav class="hidden lg:flex items-center gap-5 xl:gap-7">
+          {% with nm=request.resolver_match.url_name ns=request.resolver_match.namespace %}
+            <a href="{% url 'website:home' %}" class="nav-link {% if ns == 'website' and nm == 'home' %}active{% endif %}">
+              <i class="fas fa-home text-sm"></i><span>الرئيسية</span>
+            </a>
+            <a href="{% url 'website:services' %}" class="nav-link {% if ns == 'website' and nm == 'services' %}active{% endif %}">
+              <i class="fas fa-cogs text-sm"></i><span>الخدمات</span>
+            </a>
+            <a href="{% url 'profiles:employees_list' %}" class="nav-link {% if ns == 'profiles' %}active{% endif %}">
+              <i class="fas fa-users text-sm"></i><span>دليل الفريق</span>
+            </a>
+
+            {% if request.user.is_authenticated %}
+              {% if request.user.role == 'client' %}
+                <a href="{% url 'marketplace:request_create' %}" class="nav-link {% if nm == 'request_create' %}active{% endif %}">
+                  <i class="fas fa-plus-circle text-sm"></i><span>طلب جديد</span>
+                </a>
+                <a href="{% url 'marketplace:my_requests' %}" class="nav-link {% if nm == 'my_requests' %}active{% endif %}">
+                  <i class="fas fa-list-alt text-sm"></i><span>طلباتي</span>
+                </a>
+              {% endif %}
+              {% if request.user.role == 'employee' %}
+                <a href="{% url 'marketplace:new_requests' %}" class="nav-link {% if nm == 'new_requests' %}active{% endif %}">
+                  <i class="fas fa-bell text-sm"></i><span>الطلبات الجديدة</span>
+                </a>
+                <a href="{% url 'marketplace:my_tasks' %}" class="nav-link {% if nm == 'my_tasks' %}active{% endif %}">
+                  <i class="fas fa-tasks text-sm"></i><span>مهامي</span>
+                </a>
+              {% endif %}
+              {% if request.user.role == 'admin' %}
+                <a href="/admin/" class="nav-link"><i class="fas fa-cog text-sm"></i><span>لوحة الإدارة</span></a>
+              {% endif %}
+              {% if request.user.role == 'finance' %}
+                <a href="/finance/" class="nav-link"><i class="fas fa-chart-line text-sm"></i><span>لوحة المالية</span></a>
+              {% endif %}
+            {% endif %}
+          {% endwith %}
+        </nav>
+
+        <!-- User/Auth + Notifications (جرس فقط) -->
+        <div class="flex items-center gap-4">
+          {% if request.user.is_authenticated %}
+            <!-- Bell only: link to notifications page -->
+            <a href="/notifications/" class="relative p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors" aria-label="الإشعارات">
+              <i class="fas fa-bell text-slate-700 dark:text-slate-300 text-[18px]"></i>
+              <span id="notifCount" class="notif-dot hidden min-w-[20px] h-[20px] text-[11px] leading-[20px] text-center rounded-full bg-red-600 text-white font-semibold"></span>
+            </a>
+
+            <!-- User menu -->
+            <div class="relative">
+              <button id="userMenuBtn" class="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 border border-slate-200 dark:border-slate-700">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 grid place-items-center text-white text-sm font-medium shadow-sm">
+                  {% if request.user.name %}{{ request.user.name|first }}{% else %}{{ request.user.email|first }}{% endif %}
+                </div>
+                <div class="text-right hidden md:block">
+                  <div class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ request.user.name|default:request.user.email|truncatechars:20 }}</div>
+                  <div class="text-xs text-slate-500 dark:text-slate-400 capitalize">{{ request.user.role }}</div>
+                </div>
+                <i class="fas fa-chevron-down text-xs transition-transform duration-200 text-slate-500"></i>
+              </button>
+              <div id="userMenu" class="absolute left-0 mt-3 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-2 hidden animate-slide-up z-50">
+                <a href="{% url 'accounts:profile' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-slate-300">
+                  <i class="fas fa-user text-sm text-primary-600 w-5 text-center"></i><span>الملف الشخصي</span>
+                </a>
+                <a href="{% url 'website:privacy' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-slate-300">
+                  <i class="fas fa-shield-alt text-sm text-primary-600 w-5 text-center"></i><span>الخصوصية</span>
+                </a>
+                <a href="{% url 'website:terms' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-slate-300">
+                  <i class="fas fa-file-contract text-sm text-primary-600 w-5 text-center"></i><span>الشروط</span>
+                </a>
+                <div class="my-1 border-t border-slate-200 dark:border-slate-700"></div>
+                <a href="{% url 'accounts:logout' %}" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 transition-all text-center font-medium">
+                  <i class="fas fa-sign-out-alt text-sm"></i><span>تسجيل الخروج</span>
+                </a>
+              </div>
+            </div>
+          {% else %}
+            <div class="flex items-center gap-4">
+              <a href="{% url 'accounts:login' %}" class="nav-link">
+                <i class="fas fa-sign-in-alt text-sm"></i><span class="hidden sm:inline">تسجيل الدخول</span><span class="sm:hidden">دخول</span>
+              </a>
+              <a href="{% url 'accounts:register' %}" class="nav-cta">
+                <i class="fas fa-user-plus text-sm"></i><span class="hidden sm:inline">إنشاء حساب</span><span class="sm:hidden">حساب</span>
+              </a>
+            </div>
+          {% endif %}
+
+          <!-- Mobile menu button -->
+          <button id="btnMobile" class="lg:hidden p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-700" aria-label="فتح القائمة">
+            <i class="fas fa-bars text-lg text-slate-700 dark:text-slate-300"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav id="mobileMenu" class="lg:hidden hidden border-t border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg animate-slide-up">
+      <div class="mx-auto px-4 py-4 space-y-2 container-xl">
+        <a href="{% url 'website:home' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+          <i class="fas fa-home text-primary-600 w-5 text-center"></i><span>الرئيسية</span>
+        </a>
+        <a href="{% url 'website:services' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+          <i class="fas fa-cogs text-primary-600 w-5 text-center"></i><span>الخدمات</span>
+        </a>
+        <a href="{% url 'profiles:employees_list' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+          <i class="fas fa-users text-primary-600 w-5 text-center"></i><span>دليل الفريق</span>
+        </a>
+
+        {% if request.user.is_authenticated %}
+          {% if request.user.role == 'client' %}
+            <a href="{% url 'marketplace:request_create' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-plus-circle text-primary-600 w-5 text-center"></i><span>طلب جديد</span>
+            </a>
+            <a href="{% url 'marketplace:my_requests' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-list-alt text-primary-600 w-5 text-center"></i><span>طلباتي</span>
+            </a>
+          {% endif %}
+          {% if request.user.role == 'employee' %}
+            <a href="{% url 'marketplace:new_requests' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-bell text-primary-600 w-5 text-center"></i><span>الطلبات الجديدة</span>
+            </a>
+            <a href="{% url 'marketplace:my_tasks' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-tasks text-primary-600 w-5 text-center"></i><span>مهامي</span>
+            </a>
+          {% endif %}
+          {% if request.user.role == 'admin' %}
+            <a href="/admin/" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-cog text-primary-600 w-5 text-center"></i><span>لوحة الإدارة</span>
+            </a>
+          {% endif %}
+          {% if request.user.role == 'finance' %}
+            <a href="/finance/" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-chart-line text-primary-600 w-5 text-center"></i><span>لوحة المالية</span>
+            </a>
+          {% endif %}
+
+          <div class="my-2 border-t border-slate-200 dark:border-slate-700 pt-2">
+            <a href="{% url 'accounts:profile' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-user text-primary-600 w-5 text-center"></i><span>ملفي الشخصي</span>
+            </a>
+            <a href="{% url 'website:privacy' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-shield-alt text-primary-600 w-5 text-center"></i><span>الخصوصية</span>
+            </a>
+            <a href="{% url 'website:terms' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium">
+              <i class="fas fa-file-contract text-primary-600 w-5 text-center"></i><span>الشروط</span>
+            </a>
+          </div>
+
+          <a href="{% url 'accounts:logout' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 transition-all font-medium mt-2">
+            <i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span>
+          </a>
+        {% else %}
+          <div class="pt-2 border-t border-slate-200 dark:border-slate-700">
+            <a href="{% url 'accounts:login' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 font-medium mb-2">
+              <i class="fas fa-sign-in-alt text-primary-600 w-5 text-center"></i><span>تسجيل الدخول</span>
+            </a>
+            <a href="{% url 'accounts:register' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 transition-all font-medium">
+              <i class="fas fa-user-plus"></i><span>إنشاء حساب جديد</span>
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </nav>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="mx-auto px-4 container-xl flex-grow py-8">
+    <div id="messages-container" class="mb-6">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert-message {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} flex items-start" data-duration="4000">
+            <div class="flex items-start flex-1">
+              {% if message.tags == 'success' %}<i class="fas fa-check-circle mr-2 mt-0.5"></i>
+              {% elif message.tags == 'error' %}<i class="fas fa-exclamation-circle mr-2 mt-0.5"></i>
+              {% elif message.tags == 'warning' %}<i class="fas fa-exclamation-triangle mr-2 mt-0.5"></i>
+              {% else %}<i class="fas fa-info-circle mr-2 mt-0.5"></i>{% endif %}
+              <div class="flex-1">{{ message }}</div>
+            </div>
+            <button class="ml-3 text-lg opacity-70 hover:opacity-100 transition-opacity" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-14 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <div class="mx-auto px-4 container-xl py-8 grid md:grid-cols-4 gap-8">
+      <div class="md:col-span-2">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-xl grid place-items-center bg-gradient-to-br from-primary-600 to-primary-800 text-white shadow-md"><i class="fas fa-link text-sm"></i></div>
+          <div class="font-extrabold text-xl gradient-text">SamiLink</div>
+        </div>
+        <p class="text-slate-600 dark:text-slate-400 text-sm max-w-md">منصّة مؤسسية متكاملة لإدارة الخدمات التقنية: طلبات، عروض، اتفاقيات، مراحل، فواتير، ونزاعات—بكل احترافية وكفاءة.</p>
+        <div class="flex gap-3 mt-4">
+          <a href="#" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 hover:text-primary-600 transition-colors"><i class="fab fa-twitter"></i></a>
+          <a href="#" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 hover:text-primary-600 transition-colors"><i class="fab fa-linkedin-in"></i></a>
+        </div>
+      </div>
+      <div>
+        <div class="font-semibold mb-4 text-slate-800 dark:text-slate-200">الروابط السريعة</div>
+        <ul class="space-y-3 text-slate-600 dark:text-slate-400">
+          <li><a class="hover:text-primary-600 transition-colors flex items-center gap-2" href="{% url 'profiles:employees_list' %}"><i class="fas fa-chevron-left text-xs"></i><span>دليل الفريق</span></a></li>
+          <li><a class="hover:text-primary-600 transition-colors flex items-center gap-2" href="{% url 'website:services' %}"><i class="fas fa-chevron-left text-xs"></i><span>الخدمات</span></a></li>
+          <li><a class="hover:text-primary-600 transition-colors flex items-center gap-2" href="{% url 'website:privacy' %}"><i class="fas fa-chevron-left text-xs"></i><span>الخصوصية</span></a></li>
+          <li><a class="hover:text-primary-600 transition-colors flex items-center gap-2" href="{% url 'website:terms' %}"><i class="fas fa-chevron-left text-xs"></i><span>الشروط</span></a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-semibold mb-4 text-slate-800 dark:text-slate-200">تواصل معنا</div>
+        <ul class="space-y-3 text-slate-600 dark:text-slate-400">
+          <li class="flex items-center gap-2"><i class="fas fa-envelope text-primary-600"></i><a class="hover:text-primary-600 transition-colors" href="mailto:no-reply@samilink.sa">no-reply@samilink.sa</a></li>
+          <li class="flex items-center gap-2"><i class="fas fa-clock text-primary-600"></i><span class="text-sm">التوقيت: Asia/Riyadh</span></li>
+          <li class="flex items-center gap-2 mt-4"><i class="fas fa-shield-alt text-primary-600"></i><span class="text-sm">منصة آمنة وموثوقة</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="py-4 text-center text-slate-500 dark:text-slate-400 text-sm border-t border-slate-200 dark:border-slate-800">
+      © {% now "Y" %} SamiLink — جميع الحقوق محفوظة
+    </div>
+  </footer>
+
+  <!-- JS -->
+  <script>
+    (function () {
+      const btn = document.getElementById('btnMobile');
+      const menu = document.getElementById('mobileMenu');
+      const userBtn = document.getElementById('userMenuBtn');
+      const userMenu = document.getElementById('userMenu');
+      const header = document.getElementById('appHeader');
+      const themeToggle = document.getElementById('themeToggle');
+      const messagesContainer = document.getElementById('messages-container');
+
+      if (btn && menu) {
+        btn.addEventListener('click', () => {
+          menu.classList.toggle('hidden');
+          menu.classList.toggle('animate-slide-up');
+          const icon = btn.querySelector('i');
+          icon.className = menu.classList.contains('hidden')
+            ? 'fas fa-bars text-lg text-slate-700 dark:text-slate-300'
+            : 'fas fa-times text-lg text-slate-700 dark:text-slate-300';
+        });
+      }
+      if (userBtn && userMenu) {
+        userBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          userMenu.classList.toggle('hidden');
+          const chevron = userBtn.querySelector('.fa-chevron-down');
+          if (chevron) chevron.classList.toggle('rotate-180');
+        });
+        document.addEventListener('click', (e) => {
+          if (!userBtn.contains(e.target) && !userMenu.contains(e.target)) {
+            userMenu.classList.add('hidden');
+            const chevron = userBtn.querySelector('.fa-chevron-down');
+            if (chevron) chevron.classList.remove('rotate-180');
+          }
+        });
+      }
+
+      const onScroll = () => { window.scrollY > 8 ? header.classList.add('header-scrolled') : header.classList.remove('header-scrolled'); };
+      onScroll(); window.addEventListener('scroll', onScroll);
+
+      function initTheme() {
+        const saved = localStorage.getItem('theme') || 'light';
+        const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (saved === 'system' && sysDark)) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+      }
+      function toggleTheme() {
+        const isDark = document.documentElement.classList.contains('dark');
+        document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
+      }
+      if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+      initTheme();
+
+      // رسائل Django (اختفاء تلقائي)
+      (function initMessages(){
+        if (!messagesContainer) return;
+        messagesContainer.querySelectorAll('.alert-message').forEach(message => {
+          const duration = parseInt(message.getAttribute('data-duration')) || 4000;
+          const timer = setTimeout(() => {
+            message.style.opacity = '0';
+            message.style.transform = 'translateY(-10px)';
+            message.style.transition = 'opacity .5s, transform .5s';
+            setTimeout(() => message?.parentNode?.removeChild(message), 500);
+          }, duration);
+          const closeBtn = message.querySelector('button');
+          if (closeBtn) closeBtn.addEventListener('click', () => clearTimeout(timer));
+        });
+      })();
+
+      // ========= إشعارات (Badge فقط) =========
+      const notifCount = document.getElementById('notifCount');
+      window.NOTIF_ENDPOINTS = window.NOTIF_ENDPOINTS || {
+        unread: '/notifications/api/unread-count'
+      };
+
+      function setCount(n) {
+        if (!notifCount) return;
+        if (!n || n <= 0) { notifCount.classList.add('hidden'); notifCount.textContent = ''; }
+        else { notifCount.classList.remove('hidden'); notifCount.textContent = n > 99 ? '99+' : String(n); }
+      }
+
+      async function fetchCount() {
+        try{
+          const r = await fetch(window.NOTIF_ENDPOINTS.unread, { credentials:'same-origin' });
+          if(!r.ok) return;
+          const data = await r.json();
+          setCount(data.count || 0);
+        }catch(e){}
+      }
+
+      {% if request.user.is_authenticated %}
+        fetchCount();
+        setInterval(fetchCount, 30000);
+      {% endif %}
+    })();
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

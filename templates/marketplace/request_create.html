@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}طلب جديد{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 rtl" dir="rtl">
+
+  <!-- رأس الصفحة -->
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">
+      إنشاء طلب جديد
+    </h1>
+    <a href="{% url 'marketplace:request_list' %}"
+       class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition">
+      <span class="i-lucide:arrow-right rtl:rotate-180"></span>
+      العودة للطلبات
+    </a>
+  </div>
+
+  <!-- بطاقة النموذج -->
+  <div class="bg-white/90 backdrop-blur rounded-2xl shadow-glass-lg border border-slate-200 p-6">
+
+    <!-- تنبيه للأخطاء العامة -->
+    {% if form.non_field_errors %}
+      <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-700 text-sm">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
+    <form id="createRequestForm" method="post" class="space-y-6">
+      {% csrf_token %}
+
+      <!-- العنوان -->
+      <div>
+        <label for="{{ form.title.id_for_label }}" class="block mb-1 font-semibold text-slate-800">
+          العنوان
+        </label>
+        {{ form.title }}
+        {% if form.title.errors %}
+          <p class="mt-1 text-sm text-rose-600">{{ form.title.errors|join:", " }}</p>
+        {% endif %}
+        <div class="mt-1 flex items-center justify-between text-xs text-slate-500">
+          <span>اختر عنوانًا واضحًا موجزًا</span>
+          <span id="titleCounter">0/120</span>
+        </div>
+      </div>
+
+      <!-- التفاصيل -->
+      <div>
+        <label for="{{ form.details.id_for_label }}" class="block mb-1 font-semibold text-slate-800">
+          التفاصيل
+        </label>
+        {{ form.details }}
+        {% if form.details.errors %}
+          <p class="mt-1 text-sm text-rose-600">{{ form.details.errors|join:", " }}</p>
+        {% endif %}
+        <div class="mt-1 flex items-center justify-between text-xs text-slate-500">
+          <span>اشرح المطلوب، النطاق، والمخرجات المتوقعة</span>
+          <span id="detailsCounter">0/2000</span>
+        </div>
+      </div>
+
+      <!-- المدة التقديرية والسعر -->
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label for="{{ form.estimated_duration_days.id_for_label }}" class="block mb-1 font-semibold text-slate-800">
+            المدة التقديرية (أيام)
+          </label>
+          {{ form.estimated_duration_days }}
+          {% if form.estimated_duration_days.errors %}
+            <p class="mt-1 text-sm text-rose-600">{{ form.estimated_duration_days.errors|join:", " }}</p>
+          {% endif %}
+        </div>
+        <div>
+          <label for="{{ form.estimated_price.id_for_label }}" class="block mb-1 font-semibold text-slate-800">
+            السعر التقريبي
+          </label>
+          {{ form.estimated_price }}
+          {% if form.estimated_price.errors %}
+            <p class="mt-1 text-sm text-rose-600">{{ form.estimated_price.errors|join:", " }}</p>
+          {% endif %}
+          <div class="mt-1 text-xs text-slate-500">
+            <span>معاينة: </span><span id="pricePreview">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- الروابط -->
+      <div>
+        <label for="{{ form.links.id_for_label }}" class="block mb-1 font-semibold text-slate-800">
+          روابط (اختياري)
+        </label>
+        {{ form.links }}
+        {% if form.links.errors %}
+          <p class="mt-1 text-sm text-rose-600">{{ form.links.errors|join:", " }}</p>
+        {% endif %}
+        <p class="mt-1 text-xs text-slate-500">
+          يمكنك إدخال أكثر من رابط؛ كل واحد في سطر منفصل. سنفحص صحة الروابط قبل الإرسال.
+        </p>
+        <div id="linksErrors" class="mt-1 text-xs text-rose-600 hidden"></div>
+      </div>
+
+      <!-- أزرار الإجراء -->
+      <div class="flex items-center gap-3 pt-2">
+        <button id="submitBtn"
+                class="px-5 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition">
+          إنشاء الطلب
+        </button>
+        <a href="{% url 'marketplace:request_list' %}"
+           class="px-5 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition">
+          إلغاء
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<!-- سكربت تحسين تجربة المستخدم (بدون مكتبات خارجية) -->
+<script>
+(function () {
+  var form = document.getElementById('createRequestForm');
+  var submitBtn = document.getElementById('submitBtn');
+
+  // عدّادات الحروف
+  var titleInput = document.getElementById('{{ form.title.id_for_label }}');
+  var detailsInput = document.getElementById('{{ form.details.id_for_label }}');
+  var titleCounter = document.getElementById('titleCounter');
+  var detailsCounter = document.getElementById('detailsCounter');
+
+  function updateCounter(el, counterEl, max) {
+    if (!el || !counterEl) return;
+    var len = el.value ? el.value.length : 0;
+    counterEl.textContent = len + '/' + max;
+  }
+
+  if (titleInput && titleCounter) {
+    var maxTitle = 120;
+    titleInput.addEventListener('input', function () { updateCounter(titleInput, titleCounter, maxTitle); });
+    updateCounter(titleInput, titleCounter, maxTitle);
+  }
+  if (detailsInput && detailsCounter) {
+    var maxDetails = 2000;
+    detailsInput.addEventListener('input', function () { updateCounter(detailsInput, detailsCounter, maxDetails); });
+    updateCounter(detailsInput, detailsCounter, maxDetails);
+  }
+
+  // معاينة السعر
+  var priceInput = document.getElementById('{{ form.estimated_price.id_for_label }}');
+  var pricePreview = document.getElementById('pricePreview');
+  function formatPrice(v) {
+    if (v === '' || v === null || isNaN(v)) return '—';
+    try { return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(parseFloat(v)); }
+    catch (e) { return v; }
+  }
+  if (priceInput && pricePreview) {
+    var onPrice = function () { pricePreview.textContent = formatPrice(priceInput.value); };
+    priceInput.addEventListener('input', onPrice);
+    onPrice();
+  }
+
+  // فحص الروابط قبل الإرسال
+  var linksArea = document.getElementById('{{ form.links.id_for_label }}');
+  var linksErrors = document.getElementById('linksErrors');
+  function validateLinks() {
+    if (!linksArea) return true;
+    var val = linksArea.value || '';
+    var lines = val.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+    var bad = [];
+    var re = /^(https?:\/\/)[^\s]+$/i;
+    for (var i = 0; i < lines.length; i++) {
+      if (!re.test(lines[i])) bad.push(lines[i]);
+    }
+    if (bad.length > 0) {
+      linksErrors.classList.remove('hidden');
+      linksErrors.textContent = 'روابط غير صالحة: ' + bad.join(' ، ');
+      return false;
+    }
+    linksErrors.classList.add('hidden');
+    linksErrors.textContent = '';
+    return true;
+  }
+  if (linksArea) {
+    linksArea.addEventListener('blur', validateLinks);
+  }
+
+  // منع إرسال النموذج إذا كان هناك أخطاء واضحة
+  form.addEventListener('submit', function (e) {
+    var okLinks = validateLinks();
+    if (!okLinks) {
+      e.preventDefault();
+      return false;
+    }
+    if (submitBtn) submitBtn.disabled = true;
+  });
+})();
+</script>
+{% endblock %}

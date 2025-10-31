@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}الطلبات الجديدة{% endblock %}
+{% block content %}
+
+<section class="py-10 max-w-6xl mx-auto rtl" dir="rtl">
+
+  <!-- تنبيه إرشادي للموظفين -->
+  <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+    <div class="flex items-start gap-3">
+      <span class="text-xl">⚠️</span>
+      <div class="text-sm leading-6">
+        <b>تنبيه للموظفين:</b> يمكنك تقديم <b>عرض واحد فقط</b> لكل طلب من الطلبات الجديدة. بعد اختيار العميل للعرض، سيتم إسناد الطلب تلقائيًا للموظف صاحب العرض المختار ولن يظهر هنا بعد ذلك.
+      </div>
+    </div>
+  </div>
+
+  <!-- العنوان الرئيسي -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-extrabold text-slate-800 flex items-center gap-2">
+      🆕 الطلبات الجديدة
+    </h1>
+    <span class="text-sm text-slate-500">{{ requests|length }} طلب{% if requests|length != 1 %}ات{% endif %}</span>
+  </div>
+
+  {% if requests %}
+    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {% for r in requests %}
+        <div class="group relative bg-white/75 backdrop-blur border border-slate-200 rounded-2xl p-5 shadow-glass-lg hover:shadow-xl transition-all duration-300">
+
+          <!-- شريط الحالة الجانبي -->
+          <div class="absolute top-0 right-0 h-full w-1 rounded-l-lg
+                      {% if r.status == 'new' %}bg-sky-400
+                      {% elif r.status == 'offer_selected' %}bg-amber-400
+                      {% elif r.status == 'agreement_pending' %}bg-indigo-500
+                      {% elif r.status == 'in_progress' %}bg-emerald-500
+                      {% elif r.status == 'completed' %}bg-emerald-700
+                      {% elif r.status == 'dispute' %}bg-rose-500
+                      {% else %}bg-slate-400{% endif %}">
+          </div>
+
+          <!-- محتوى البطاقة -->
+          <div class="flex flex-col h-full justify-between">
+            <div>
+              <div class="flex items-start justify-between gap-3 mb-2">
+                <!-- إبراز العنوان -->
+                <h2 class="text-lg font-extrabold text-slate-900 leading-6 line-clamp-2">{{ r.title }}</h2>
+                <span class="px-2 py-1 text-xs rounded-xl border bg-white text-slate-700 shrink-0">
+                  {{ r.get_status_display|default:r.status }}
+                </span>
+              </div>
+
+              <!-- عميل الطلب -->
+              <p class="text-slate-700 text-sm">
+                <span class="font-semibold text-slate-900">العميل:</span>
+                {{ r.client.name|default:r.client.email }}
+              </p>
+              {% if r.client.phone %}
+                <p class="text-slate-500 text-xs">{{ r.client.phone }}</p>
+              {% endif %}
+
+              <!-- قيم العميل المبدئية (المدة/المبلغ) -->
+              <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                <span class="px-2 py-1 rounded-lg border border-sky-200 bg-sky-50 text-sky-800">
+                  المدة: <b>{{ r.estimated_duration_days|default:"—" }}</b> يوم
+                </span>
+                <span class="px-2 py-1 rounded-lg border border-sky-200 bg-sky-50 text-sky-800">
+                  المبلغ: <b>{{ r.estimated_price|default:"—" }}</b> ريال
+                </span>
+              </div>
+
+              <!-- لمحة من تفاصيل الطلب (كما كتبها العميل) -->
+              {% if r.details %}
+              <div class="mt-3 text-slate-600 text-sm whitespace-pre-line line-clamp-3">
+                {{ r.details|urlize }}
+              </div>
+              {% endif %}
+
+              <p class="text-slate-400 text-xs mt-3">
+                تم الإنشاء في {{ r.created_at|date:"Y-m-d H:i" }}
+              </p>
+            </div>
+
+            <!-- أزرار الإجراءات -->
+            <div class="mt-4 grid grid-cols-1 gap-2">
+              <a href="{% url 'marketplace:request_detail' r.pk %}"
+                 class="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl
+                        bg-gradient-to-l from-indigo-600 to-sky-600 text-white text-sm font-semibold
+                        hover:from-indigo-700 hover:to-sky-700 transition">
+                عرض التفاصيل
+              </a>
+
+              <!-- زر اختياري: انتقال سريع لتقديم عرض (يبقى المنطق الفعلي في صفحة التفاصيل لمنع التكرار) -->
+              <a href="{% url 'marketplace:offer_create_cbv' r.pk %}"
+                 class="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl
+                        border border-indigo-200 bg-white text-indigo-700 text-sm font-semibold
+                        hover:bg-indigo-50 transition">
+                تقديم عرض (عرض واحد فقط)
+              </a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <!-- لا توجد طلبات -->
+    <div class="text-center py-16 bg-white/60 backdrop-blur border border-dashed border-slate-300 rounded-2xl">
+      <div class="text-6xl mb-3 opacity-40">🗂️</div>
+      <p class="text-lg text-slate-600 font-medium">لا توجد طلبات جديدة في الوقت الحالي</p>
+      <p class="text-sm text-slate-400 mt-1">سيتم عرض الطلبات الجديدة هنا فور وصولها</p>
+    </div>
+  {% endif %}
+
+</section>
+
+{% endblock %}

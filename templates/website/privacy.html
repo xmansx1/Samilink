@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}سياسة الخصوصية{% endblock %}
+{% block content %}
+<section class="py-10 max-w-4xl mx-auto">
+  <h1 class="text-3xl font-extrabold mb-4">سياسة الخصوصية</h1>
+  <p class="text-slate-600 mb-6">
+    في SamiLink، نلتزم بحماية بياناتك وفقًا لأفضل الممارسات. يوضّح هذا المستند كيفية جمعنا واستخدامنا وحمايتنا للبيانات.
+  </p>
+
+  <div class="space-y-6 leading-8">
+    <section>
+      <h2 class="text-xl font-bold mb-2">1) البيانات التي نجمعها</h2>
+      <ul class="list-disc pr-6 text-slate-700">
+        <li>بيانات الحساب: الاسم، البريد الإلكتروني، رقم الجوال (يُخزَّن بصيغة دولية E.164).</li>
+        <li>بيانات المعاملات: الطلبات، العروض، الاتفاقيات، المراحل، الفواتير والمدفوعات.</li>
+        <li>المرفقات والروابط ذات الصلة بالمشاريع.</li>
+        <li>سجلات النظام (Audit): عنوان IP، المتصفح، الإجراءات الحساسة.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">2) كيفية الاستخدام</h2>
+      <ul class="list-disc pr-6 text-slate-700">
+        <li>تنفيذ دورة العمل: طلب → عروض → اتفاقية → تنفيذ → تحصيل/صرف.</li>
+        <li>إرسال إشعارات بريدية معاملاتية (SMTP).</li>
+        <li>التواصل عبر واتساب بروابط مباشرة آمنة عبر وسيط (بدون كشف رقم الموظف علنًا).</li>
+        <li>مكافحة الاحتيال وضمان الامتثال لسياسات النزاعات.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">3) مشاركة البيانات</h2>
+      <p class="text-slate-700">
+        لا نبيع بياناتك. قد نشاركها مع مزوّدي خدمة موثوقين (استضافة/تخزين ملفات/SMTP) بما يلزم لتشغيل المنصّة، وفق اتفاقيات حماية بيانات.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">4) التخزين والأمان</h2>
+      <ul class="list-disc pr-6 text-slate-700">
+        <li>اتصال HTTPS، حماية CSRF/XSS/SQLi، إدارة جلسات آمنة، RBAC دقيق.</li>
+        <li>المرفقات بروابط مؤقّتة موقّعة وصلاحيات وصول.</li>
+        <li>سجلات Audit للإجراءات الحساسة.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">5) الاحتفاظ والحذف</h2>
+      <p class="text-slate-700">
+        نلتزم بسياسات الاحتفاظ بالبيانات حسب القوانين وسياسات العمل. عند طلب حذف قانوني مشروع، ننفّذ الحذف المنسّق مع الاحتفاظ بما يلزم للمتطلبات النظامية والمالية.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">6) حقوقك</h2>
+      <ul class="list-disc pr-6 text-slate-700">
+        <li>الاطلاع على بياناتك وتحديثها.</li>
+        <li>طلب تصحيح الأخطاء أو حذف الحساب (بحسب السياسات النظامية).</li>
+        <li>الاعتراض على المعالجة غير الأساسية حيثما ينطبق.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold mb-2">7) التواصل</h2>
+      <p class="text-slate-700">
+        للاستفسارات المتعلقة بالخصوصية: <a class="text-indigo-600 hover:underline" href="mailto:no-reply@samilink.sa">no-reply@samilink.sa</a>
+      </p>
+    </section>
+
+    <p class="text-sm text-slate-500">تاريخ النفاذ: {{ now|date:"Y-m-d" }}</p>
+  </div>
+</section>
+{% endblock %}

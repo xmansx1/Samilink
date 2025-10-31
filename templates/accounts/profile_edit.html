@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}تعديل الملف الشخصي{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto p-6">
+  {% include "accounts/_messages.html" %}
+  <div class="bg-white rounded-2xl shadow border p-6">
+    <h1 class="text-2xl font-bold mb-4">تعديل الملف الشخصي</h1>
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="block mb-1 text-slate-700">الاسم</label>
+        {{ form.name }}
+      </div>
+      <div>
+        <label class="block mb-1 text-slate-700">الجوال</label>
+        {{ form.phone }}
+        <p class="text-sm text-slate-500 mt-1">سيُحفظ بصيغة دولية تلقائيًا (E.164).</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="{% url 'accounts:profile' %}" class="px-4 py-2 rounded-xl border">رجوع</a>
+        <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white">حفظ</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

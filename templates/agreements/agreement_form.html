@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}اتفاقية — طلب #{{ req.id }}{% endblock %}
+{% block content %}
+<section class="py-8 max-w-6xl mx-auto rtl" dir="rtl">
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="rounded-2xl border bg-white/70 p-6 shadow-glass-lg mb-6">
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">العنوان</label>
+          {{ form.title }}
+          {% for e in form.title.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold mb-1">المدة (أيام)</label>
+          {{ form.duration_days }}
+          {% if form.duration_days.field.disabled %}
+            <p class="text-xs text-slate-500 mt-1">تم قفل هذا الحقل بعد إنشاء الاتفاقية.</p>
+          {% endif %}
+          {% for e in form.duration_days.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold mb-1">المبلغ الإجمالي</label>
+          {{ form.total_amount }}
+          {% if form.total_amount.field.disabled %}
+            <p class="text-xs text-slate-500 mt-1">تم قفل هذا الحقل بعد إنشاء الاتفاقية.</p>
+          {% endif %}
+          {% for e in form.total_amount.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold mb-1">نص الاتفاقية</label>
+          {{ form.text }} {# ← كان body، وهو غير موجود في الموديل #}
+          {% for e in form.text.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border bg-white/70 p-6 shadow-glass-lg">
+      {{ formset.management_form }}
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold">الدفعات</h3>
+        <button type="button" id="add-row" class="btn btn-secondary">+ إضافة دفعة</button>
+      </div>
+
+      <div id="rows" class="space-y-4">
+        {% for f in formset.forms %}
+          <div class="rounded-xl border p-4">
+            <div class="grid md:grid-cols-4 gap-3">
+              <div><label class="text-sm font-semibold">العنوان</label>{{ f.title }}</div>
+              <div><label class="text-sm font-semibold">المبلغ</label>{{ f.amount }}</div>
+              <div><label class="text-sm font-semibold">الترتيب</label>{{ f.order }}</div>
+              <div><label class="text-sm font-semibold">المهلة (أيام)</label>{{ f.due_days }}</div>
+            </div>
+            {% if f.DELETE %}<div class="mt-2">{{ f.DELETE }} <span class="text-sm">حذف</span></div>{% endif %}
+            {% for e in f.non_field_errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="mt-6 flex gap-3">
+      <button name="action" value="save" class="btn btn-primary">حفظ (مسودة)</button>
+      <button name="action" value="send" class="btn btn-success">حفظ وإرسال للعميل</button>
+      <a href="{% url 'marketplace:request_detail' req.id %}" class="btn btn-light">عودة للطلب</a>
+    </div>
+  </form>
+
+  <template id="empty-form">
+    <div class="rounded-xl border p-4 mt-4">
+      <div class="grid md:grid-cols-4 gap-3">
+        <div><label class="text-sm font-semibold">العنوان</label>__prefix__-title</div>
+        <div><label class="text-sm font-semibold">المبلغ</label>__prefix__-amount</div>
+        <div><label class="text-sm font-semibold">الترتيب</label>__prefix__-order</div>
+        <div><label class="text-sm font-semibold">المهلة (أيام)</label>__prefix__-due_days</div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // إضافة صف جديد للفورمسِت (بدون مكتبات خارجية)
+    const addBtn = document.getElementById('add-row');
+    const rows = document.getElementById('rows');
+    const total = document.getElementById('id_milestone_set-TOTAL_FORMS');
+    const tmpl = document.getElementById('empty-form').innerHTML;
+
+    addBtn?.addEventListener('click', () => {
+      const idx = parseInt(total.value, 10);
+      const html = tmpl
+        .replaceAll('__prefix__', `id_milestone_set-${idx}`)
+        .replaceAll('name="__prefix__-', `name="milestone_set-${idx}-`);
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = html;
+      rows.appendChild(wrapper);
+      total.value = String(idx + 1);
+    });
+  </script>
+
+</section>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}ملفي الشخصي{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-6">
+  {% include "accounts/_messages.html" %}
+  <div class="grid md:grid-cols-3 gap-6">
+    <div class="md:col-span-1">
+      <div class="bg-white rounded-2xl shadow border p-6">
+        <div class="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-indigo-200 to-sky-200 grid place-items-center text-3xl">👤</div>
+        <h2 class="text-center text-xl font-bold mt-3">{{ request.user.name|default:request.user.email }}</h2>
+        <p class="text-center text-slate-500">{{ request.user.email }}</p>
+        {% if request.user.phone %}
+          <p class="text-center text-slate-600 mt-2">الجوال: {{ request.user.phone }}</p>
+          <div class="text-center mt-3">
+            <a class="text-sm text-emerald-600 hover:underline" href="{{ request.user.whatsapp_link }}" target="_blank" rel="noopener">التواصل واتساب</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="md:col-span-2">
+      <div class="bg-white rounded-2xl shadow border p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">بيانات الحساب</h3>
+          <a href="{% url 'accounts:profile_edit' %}" class="text-indigo-600 hover:underline">تعديل</a>
+        </div>
+        <ul class="space-y-2 text-slate-700">
+          <li><span class="font-semibold">الدور:</span> {{ request.user.get_role_display }}</li>
+          <li><span class="font-semibold">الحالة:</span> {% if request.user.is_active %}مفعّل{% else %}غير مفعّل{% endif %}</li>
+          <li><span class="font-semibold">الانضمام:</span> {{ request.user.date_joined|date:"Y-m-d H:i" }}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
