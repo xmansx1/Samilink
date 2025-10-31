@@ -1,66 +1,172 @@
+{# agreements/templates/agreements/agreement_form.html #}
 {% extends "base.html" %}
 {% block title %}اتفاقية — طلب #{{ req.id }}{% endblock %}
+
 {% block content %}
 <section class="py-8 max-w-6xl mx-auto rtl" dir="rtl">
+
+  {# بطاقة ملخّص الاتفاقية #}
+  <div class="rounded-2xl border bg-white/70 dark:bg-slate-800/70 p-6 shadow mb-6">
+    <div class="grid md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <div class="text-slate-500 dark:text-slate-400">رقم الطلب</div>
+        <div class="font-semibold">
+          <a class="underline hover:no-underline" href="{% url 'marketplace:request_detail' req.id %}">#{{ req.id }}</a>
+        </div>
+      </div>
+      <div>
+        <div class="text-slate-500 dark:text-slate-400">المبلغ المتفق عليه</div>
+        <div class="font-semibold">{{ form.instance.total_amount|default:0|floatformat:2 }} ر.س</div>
+      </div>
+      <div>
+        <div class="text-slate-500 dark:text-slate-400">المدة المتفق عليها</div>
+        <div class="font-semibold">{{ form.instance.duration_days|default:0 }} يوم</div>
+      </div>
+      <div>
+        <div class="text-slate-500 dark:text-slate-400">حالة الاتفاقية</div>
+        <div class="font-semibold">{{ form.instance.get_status_display|default:"—" }}</div>
+      </div>
+    </div>
+  </div>
 
   <form method="post" novalidate>
     {% csrf_token %}
 
-    <div class="rounded-2xl border bg-white/70 p-6 shadow-glass-lg mb-6">
-      <div class="grid md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-semibold mb-1">العنوان</label>
-          {{ form.title }}
-          {% for e in form.title.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
-        </div>
+    <div class="grid md:grid-cols-3 gap-6">
 
-        <div>
-          <label class="block text-sm font-semibold mb-1">المدة (أيام)</label>
-          {{ form.duration_days }}
-          {% if form.duration_days.field.disabled %}
-            <p class="text-xs text-slate-500 mt-1">تم قفل هذا الحقل بعد إنشاء الاتفاقية.</p>
-          {% endif %}
-          {% for e in form.duration_days.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
-        </div>
+      {# العمود الرئيسي: حقول الاتفاقية والدفعات #}
+      <div class="md:col-span-2 space-y-6">
 
-        <div>
-          <label class="block text-sm font-semibold mb-1">المبلغ الإجمالي</label>
-          {{ form.total_amount }}
-          {% if form.total_amount.field.disabled %}
-            <p class="text-xs text-slate-500 mt-1">تم قفل هذا الحقل بعد إنشاء الاتفاقية.</p>
-          {% endif %}
-          {% for e in form.total_amount.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="block text-sm font-semibold mb-1">نص الاتفاقية</label>
-          {{ form.text }} {# ← كان body، وهو غير موجود في الموديل #}
-          {% for e in form.text.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
-        </div>
-      </div>
-    </div>
-
-    <div class="rounded-2xl border bg-white/70 p-6 shadow-glass-lg">
-      {{ formset.management_form }}
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="font-bold">الدفعات</h3>
-        <button type="button" id="add-row" class="btn btn-secondary">+ إضافة دفعة</button>
-      </div>
-
-      <div id="rows" class="space-y-4">
-        {% for f in formset.forms %}
-          <div class="rounded-xl border p-4">
-            <div class="grid md:grid-cols-4 gap-3">
-              <div><label class="text-sm font-semibold">العنوان</label>{{ f.title }}</div>
-              <div><label class="text-sm font-semibold">المبلغ</label>{{ f.amount }}</div>
-              <div><label class="text-sm font-semibold">الترتيب</label>{{ f.order }}</div>
-              <div><label class="text-sm font-semibold">المهلة (أيام)</label>{{ f.due_days }}</div>
+        {# حقول الاتفاقية الأساسية #}
+        <div class="rounded-2xl border bg-white/70 dark:bg-slate-800/70 p-6 shadow">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold mb-1">العنوان</label>
+              {{ form.title }}
+              {% for e in form.title.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
             </div>
-            {% if f.DELETE %}<div class="mt-2">{{ f.DELETE }} <span class="text-sm">حذف</span></div>{% endif %}
-            {% for e in f.non_field_errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+
+            <div>
+              <label class="block text-sm font-semibold mb-1">المدة (أيام)</label>
+              {{ form.duration_days }}
+              {% if form.duration_days.field.disabled %}
+                <p class="text-xs text-slate-500 mt-1">تم قفل هذا الحقل بعد إنشاء الاتفاقية.</p>
+              {% endif %}
+              {% for e in form.duration_days.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold mb-1">المبلغ الإجمالي</label>
+              {{ form.total_amount }}
+              {% if form.total_amount.field.disabled %}
+                <p class="text-xs text-slate-500 mt-1">تم قفل هذا الحقل بعد إنشاء الاتفاقية.</p>
+              {% endif %}
+              {% for e in form.total_amount.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-sm font-semibold mb-1">نص الاتفاقية</label>
+              {{ form.text }}
+              {% for e in form.text.errors %}<p class="text-rose-600 text-sm">{{ e }}</p>{% endfor %}
+            </div>
           </div>
-        {% endfor %}
+        </div>
+
+        {# الدفعات (FormSet) #}
+        <div class="rounded-2xl border bg-white/70 dark:bg-slate-800/70 p-6 shadow">
+          {{ formset.management_form }}
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold">الدفعات</h3>
+            <button type="button" id="add-row" class="btn btn-secondary">+ إضافة دفعة</button>
+          </div>
+
+          <div id="rows" class="space-y-4">
+            {% for f in formset.forms %}
+              <div class="rounded-xl border p-4">
+                <div class="grid md:grid-cols-4 gap-3">
+                  <div>
+                    <label class="text-sm font-semibold">العنوان</label>
+                    {{ f.title }}
+                  </div>
+                  <div>
+                    <label class="text-sm font-semibold">المبلغ</label>
+                    {{ f.amount }}
+                  </div>
+                  <div>
+                    <label class="text-sm font-semibold">الترتيب</label>
+                    {{ f.order }}
+                  </div>
+                  <div>
+                    <label class="text-sm font-semibold">المهلة (أيام)</label>
+                    {{ f.due_days }}
+                  </div>
+                </div>
+                {% if f.DELETE %}
+                  <div class="mt-2">{{ f.DELETE }} <span class="text-sm">حذف</span></div>
+                {% endif %}
+                {% for e in f.non_field_errors %}
+                  <p class="text-rose-600 text-sm">{{ e }}</p>
+                {% endfor %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <p class="mt-3 text-xs text-slate-500">
+            ملاحظة: يجب أن يساوي مجموع مبالغ الدفعات المبلغ الإجمالي للاتفاقية عند الإرسال.
+          </p>
+        </div>
+
       </div>
+
+      {# العمود الجانبي: معاينة البنود المثبتة + زر التثبيت #}
+      <aside class="space-y-6">
+
+        <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold">البنود المثبّتة</h3>
+            <span class="text-xs rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1">
+              {{ form.instance.clause_items.count }} بند/بنود
+            </span>
+          </div>
+
+          {% if form.instance.clause_items.count == 0 %}
+            <div class="mb-4 p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-800">
+              لا توجد بنود مثبتة بعد.
+            </div>
+          {% endif %}
+
+          <ol class="list-decimal pr-6 space-y-2 max-h-72 overflow-auto">
+            {% for item in form.instance.clause_items.all %}
+              <li class="leading-7">
+                {% if item.clause %}
+                  <strong>{{ item.clause.title }}:</strong> {{ item.clause.body }}
+                {% else %}
+                  {{ item.custom_text }}
+                {% endif %}
+              </li>
+            {% empty %}
+              <li class="text-slate-500">—</li>
+            {% endfor %}
+          </ol>
+
+          <div class="mt-4">
+            {% if user.is_authenticated %}
+              {% if user.is_staff or user.is_superuser %}
+                <a class="btn btn-ghost w-full" href="{% url 'agreements:finalize_clauses' form.instance.pk %}">
+                  تثبيت/تعديل البنود
+                </a>
+              {% else %}
+                {% if user.id == form.instance.employee_id %}
+                  <a class="btn btn-ghost w-full" href="{% url 'agreements:finalize_clauses' form.instance.pk %}">
+                    تثبيت/تعديل البنود
+                  </a>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+
+      </aside>
     </div>
 
     <div class="mt-6 flex gap-3">
@@ -70,29 +176,44 @@
     </div>
   </form>
 
+  {# empty_form الصحيح من Django لضمان أسماء/IDs سليمة #}
   <template id="empty-form">
     <div class="rounded-xl border p-4 mt-4">
       <div class="grid md:grid-cols-4 gap-3">
-        <div><label class="text-sm font-semibold">العنوان</label>__prefix__-title</div>
-        <div><label class="text-sm font-semibold">المبلغ</label>__prefix__-amount</div>
-        <div><label class="text-sm font-semibold">الترتيب</label>__prefix__-order</div>
-        <div><label class="text-sm font-semibold">المهلة (أيام)</label>__prefix__-due_days</div>
+        <div>
+          <label class="text-sm font-semibold">العنوان</label>
+          {{ formset.empty_form.title }}
+        </div>
+        <div>
+          <label class="text-sm font-semibold">المبلغ</label>
+          {{ formset.empty_form.amount }}
+        </div>
+        <div>
+          <label class="text-sm font-semibold">الترتيب</label>
+          {{ formset.empty_form.order }}
+        </div>
+        <div>
+          <label class="text-sm font-semibold">المهلة (أيام)</label>
+          {{ formset.empty_form.due_days }}
+        </div>
+        {% if formset.can_delete %}
+          <div class="hidden">{{ formset.empty_form.DELETE }}</div>
+        {% endif %}
       </div>
     </div>
   </template>
 
   <script>
-    // إضافة صف جديد للفورمسِت (بدون مكتبات خارجية)
+    // إضافة صف جديد للفورمسِت باستخدام empty_form (أكثر أمانًا)
     const addBtn = document.getElementById('add-row');
     const rows = document.getElementById('rows');
-    const total = document.getElementById('id_milestone_set-TOTAL_FORMS');
-    const tmpl = document.getElementById('empty-form').innerHTML;
+    const total = document.getElementById('{{ formset.prefix }}-TOTAL_FORMS');
 
     addBtn?.addEventListener('click', () => {
       const idx = parseInt(total.value, 10);
-      const html = tmpl
-        .replaceAll('__prefix__', `id_milestone_set-${idx}`)
-        .replaceAll('name="__prefix__-', `name="milestone_set-${idx}-`);
+      const tmpl = document.getElementById('empty-form').innerHTML;
+      // استبدال __prefix__ في كل خصائص name/id للempty_form
+      let html = tmpl.replaceAll('__prefix__', String(idx));
       const wrapper = document.createElement('div');
       wrapper.innerHTML = html;
       rows.appendChild(wrapper);

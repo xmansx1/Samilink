@@ -1,25 +1,157 @@
+{# agreements/templates/agreements/finalize_clauses.html #}
 {% extends "base.html" %}
+{% load static %}
+
+{% block title %}تثبيت بنود الاتفاقية #{{ agreement.id }}{% endblock %}
+
 {% block content %}
-<div class="max-w-3xl mx-auto p-6" dir="rtl">
-  <h1 class="text-2xl font-bold mb-4">تثبيت بنود الاتفاقية — {{ agreement.title }}</h1>
+<section class="max-w-5xl mx-auto px-4 py-8 rtl" dir="rtl">
 
-  <form method="post" class="space-y-6">
+  <!-- هيدر -->
+  <header class="mb-6">
+    <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">تثبيت/تعديل بنود الاتفاقية</h1>
+    <p class="text-slate-600 dark:text-slate-300 mt-1">
+      اختر من البنود المحفوظة (من الأدمن) وأضف بنودًا مخصّصة (سطر لكل بند). سيتم حفظها بالترتيب:
+      البنود الجاهزة أولًا ثم البنود المخصّصة.
+    </p>
+  </header>
+
+  <!-- بطاقة معلومات مختصرة عن الاتفاقية -->
+  <div class="rounded-2xl border bg-white/70 dark:bg-slate-800/70 backdrop-blur shadow p-5 mb-6">
+    <div class="grid md:grid-cols-3 gap-4 text-sm">
+      <div>
+        <div class="text-slate-500 dark:text-slate-400">رقم الاتفاقية</div>
+        <div class="font-semibold">#{{ agreement.id }}</div>
+      </div>
+      <div>
+        <div class="text-slate-500 dark:text-slate-400">العنوان</div>
+        <div class="font-semibold">{{ agreement.title }}</div>
+      </div>
+      <div>
+        <div class="text-slate-500 dark:text-slate-400">الطلب</div>
+        <div class="font-semibold">
+          <a class="underline hover:no-underline" href="{% url 'marketplace:request_detail' agreement.request.id %}">
+            #{{ agreement.request.id }}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" class="space-y-6" novalidate>
     {% csrf_token %}
-    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow">
-      <h2 class="font-semibold mb-3">البنود الجاهزة</h2>
-      {{ form.clauses }}
+
+    <!-- بنود جاهزة من الأدمن -->
+    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow">
+      <div class="flex items-center justify-between mb-4 gap-3">
+        <div>
+          <h2 class="text-lg font-bold">البنود المحفوظة (اختيار متعدد)</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">ستُحفظ بالترتيب الظاهر أدناه.</p>
+        </div>
+        <div class="relative">
+          <input id="clause-filter" type="text"
+                 class="input w-60"
+                 placeholder="فلترة العناوين…">
+        </div>
+      </div>
+
+      {% if form.clauses.errors %}
+        <ul class="mb-3 text-rose-600 text-sm list-disc pr-5">
+          {% for e in form.clauses.errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+
+      <div id="clause-list" class="grid md:grid-cols-2 gap-3">
+        {# نعتمد أن الWidget هو CheckboxSelectMultiple؛ وإلا سيظهر كـ select multiple افتراضيًا #}
+        {{ form.clauses }}
+      </div>
+
+      <div class="flex items-center gap-3 mt-4 text-sm">
+        <button type="button" id="select-all" class="btn btn-light">تحديد الكل</button>
+        <button type="button" id="unselect-all" class="btn btn-light">إلغاء الكل</button>
+      </div>
     </div>
 
-    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow">
-      <h2 class="font-semibold mb-3">بنود مخصصة (اختياري)</h2>
-      <p class="text-sm text-slate-500 mb-2">اكتب كل بند في سطر مستقل.</p>
-      {{ form.custom_clauses }}
+    <!-- بنود مخصّصة (سطر لكل بند) -->
+    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow">
+      <h2 class="text-lg font-bold mb-3">بنود مخصّصة (اختياري)</h2>
+
+      {% if form.custom_clauses.errors %}
+        <ul class="mb-3 text-rose-600 text-sm list-disc pr-5">
+          {% for e in form.custom_clauses.errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+
+      {{ form.custom_clauses.as_textarea|default:form.custom_clauses }}
+
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
+        ملاحظة: كل سطر يُعتبر بندًا مستقلًا. يُزال أي HTML تلقائيًا لأسباب أمنية.
+      </p>
     </div>
 
-    <div class="flex gap-3">
+    <!-- معاينة حالية (اختياري) -->
+    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-bold">المعاينة الحالية للبنود</h2>
+        <span class="text-xs rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1">
+          {{ agreement.clause_items.count }} بند/بنود مثبتة
+        </span>
+      </div>
+      <ol class="list-decimal pr-6 space-y-2">
+        {% for item in agreement.clause_items.all %}
+          <li class="leading-7">
+            {% if item.clause %}
+              <strong>{{ item.clause.title }}:</strong> {{ item.clause.body }}
+            {% else %}
+              {{ item.custom_text }}
+            {% endif %}
+          </li>
+        {% empty %}
+          <li class="text-slate-500">لا توجد بنود مثبتة بعد. بعد الحفظ ستظهر هنا.</li>
+        {% endfor %}
+      </ol>
+    </div>
+
+    <!-- أزرار -->
+    <div class="flex flex-wrap items-center gap-3">
       <button type="submit" class="btn btn-primary">حفظ البنود</button>
-      <a href="{% url 'agreements:detail' agreement.pk %}" class="btn btn-ghost">رجوع</a>
+      <a href="{% url 'agreements:detail' agreement.id %}" class="btn btn-light">العودة للتفاصيل</a>
     </div>
   </form>
-</div>
+</section>
+
+{# سكربت صغير للفلترة وتحديد/إلغاء تحديد الكل — بدون مكتبات خارجية #}
+<script>
+  (function(){
+    const filterInput = document.getElementById('clause-filter');
+    const list = document.getElementById('clause-list');
+    const selAll = document.getElementById('select-all');
+    const unselAll = document.getElementById('unselect-all');
+
+    function normalize(s){ return (s||'').toString().trim().toLowerCase(); }
+
+    // فلترة العناصر (يدعم كل من checkbox/select)
+    filterInput?.addEventListener('input', function(){
+      const q = normalize(this.value);
+      if (!list) return;
+      const labels = list.querySelectorAll('label');
+      if (labels.length) {
+        labels.forEach(l => {
+          const txt = normalize(l.textContent);
+          l.parentElement.style.display = txt.includes(q) ? '' : 'none';
+        });
+      }
+    });
+
+    // تحديد/إلغاء تحديد الكل (للـ checkbox فقط)
+    selAll?.addEventListener('click', function(){
+      if (!list) return;
+      list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+    });
+    unselAll?.addEventListener('click', function(){
+      if (!list) return;
+      list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    });
+  })();
+</script>
 {% endblock %}

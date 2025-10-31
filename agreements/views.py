@@ -321,43 +321,37 @@ def _can_finalize(user) -> bool:
     return _is_admin(user)
 
 
+def _is_admin(user) -> bool:
+    return bool(getattr(user, "is_superuser", False) or getattr(user, "is_staff", False) or getattr(user, "role", "") == "admin")
+
 @login_required
-@user_passes_test(_can_finalize)
 @transaction.atomic
 def finalize_clauses(request, pk: int):
     """
-    شاشة تثبيت البنود لاتفاقية معينة بعد إنشاء الاتفاقية.
+    تثبيت/تعديل بنود الاتفاقية.
+    يسمح للـ staff/superuser أو الموظف المُسنَد على الاتفاقية.
     """
-    agreement = get_object_or_404(Agreement, pk=pk)
+    agreement = get_object_or_404(Agreement.objects.select_related("employee"), pk=pk)
 
-    # إن رغبت: تمنع التعديل بعد أن تصبح الاتفاقية نهائية
-    # if agreement.status not in (Agreement.Status.DRAFT, Agreement.Status.PENDING):
-    #     messages.error(request, "لا يمكن تعديل البنود لهذه الحالة.")
-    #     return redirect("agreements:detail", pk=agreement.pk)
+    user = request.user
+    is_owner_emp = (user.id == agreement.employee_id)
+    if not (_is_admin(user) or is_owner_emp):
+        messages.error(request, "غير مصرح لك بتعديل بنود هذه الاتفاقية.")
+        return redirect("agreements:detail", pk=agreement.pk)
 
     if request.method == "POST":
         form = AgreementClauseSelectForm(request.POST)
         if form.is_valid():
-            # حدّث العناصر القديمة لترتيب جديد
+            # امسح البنود القديمة وأعد إنشاءها بترتيب جديد
             AgreementClauseItem.objects.filter(agreement=agreement).delete()
             pos = 1
-
-            # 1) بنود جاهزة
+            # بنود جاهزة
             for clause in form.cleaned_data.get("clauses", []):
-                AgreementClauseItem.objects.create(
-                    agreement=agreement,
-                    clause=clause,
-                    position=pos,
-                )
+                AgreementClauseItem.objects.create(agreement=agreement, clause=clause, position=pos)
                 pos += 1
-
-            # 2) بنود مخصّصة (سطر لكل بند)
+            # بنود مخصّصة (سطر لكل بند)
             for line in form.cleaned_custom_lines():
-                AgreementClauseItem.objects.create(
-                    agreement=agreement,
-                    custom_text=line,
-                    position=pos,
-                )
+                AgreementClauseItem.objects.create(agreement=agreement, custom_text=line, position=pos)
                 pos += 1
 
             messages.success(request, "تم حفظ بنود الاتفاقية بنجاح.")
@@ -365,8 +359,4 @@ def finalize_clauses(request, pk: int):
     else:
         form = AgreementClauseSelectForm()
 
-    return render(
-        request,
-        "agreements/finalize_clauses.html",
-        {"agreement": agreement, "form": form},
-    )
+    return render(request, "agreements/finalize_clauses.html", {"agreement": agreement, "form": form})

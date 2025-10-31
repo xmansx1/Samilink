@@ -1,11 +1,36 @@
+{# agreements/templates/agreements/agreement_detail.html #}
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-4xl mx-auto p-6 print:p-0" dir="rtl">
+<div class="max-w-5xl mx-auto p-6 print:p-0" dir="rtl">
 
   <!-- هيدر المنصة -->
   <div class="mb-6 text-center">
     <div class="text-xl font-bold">{{ SITE_NAME|default:"SamiLink" }}</div>
     <div class="text-sm text-slate-500">توثيق اتفاقية خدمة</div>
+  </div>
+
+  <!-- بطاقة ملخص الاتفاقية (المبلغ/المدة/الحالة/الطلب) -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
+    <div class="grid md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <div class="text-slate-500">المبلغ المتفق عليه</div>
+        <div class="font-semibold">{{ agreement.total_amount|floatformat:2 }} ر.س</div>
+      </div>
+      <div>
+        <div class="text-slate-500">المدة المتفق عليها</div>
+        <div class="font-semibold">{{ agreement.duration_days }} يوم</div>
+      </div>
+      <div>
+        <div class="text-slate-500">حالة الاتفاقية</div>
+        <div class="font-semibold">{{ agreement.get_status_display }}</div>
+      </div>
+      <div>
+        <div class="text-slate-500">رقم الطلب</div>
+        <div class="font-semibold">
+          <a class="underline hover:no-underline" href="{% url 'marketplace:request_detail' agreement.request.id %}">#{{ agreement.request.id }}</a>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- الجزء الأول -->
@@ -17,14 +42,39 @@
       اتفق الطرف الأول <strong>(العميل) {{ agreement.client_display }}</strong>
       مع الطرف الثاني <strong>(الموظف) {{ agreement.employee_display }}</strong>
       على تنفيذ <strong>“{{ agreement.title }}”</strong>
-      بمبلغ <strong>{{ agreement.total_amount }} ر.س</strong>
+      بمبلغ <strong>{{ agreement.total_amount|floatformat:2 }} ر.س</strong>
       ومدة تنفيذ <strong>{{ agreement.duration_days }} يومًا</strong>.
     </p>
+    {% if agreement.text %}
+      <div class="mt-4 text-slate-700 dark:text-slate-200 leading-7 whitespace-pre-line">
+        {{ agreement.text }}
+      </div>
+    {% endif %}
   </div>
 
   <!-- الجزء الثاني: البنود (جاهزة + مخصصة) -->
   <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
-    <h2 class="font-semibold mb-3">الجزء الثاني: البنود</h2>
+    <div class="flex items-center justify-between">
+      <h2 class="font-semibold mb-3">الجزء الثاني: البنود</h2>
+      <div class="text-xs rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1">
+        {{ agreement.clause_items.count }} بند/بنود
+      </div>
+    </div>
+
+    {% if agreement.clause_items.count == 0 %}
+      <div class="mb-4 p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-800">
+        لا توجد بنود مثبتة بعد.
+        {% if user.is_authenticated %}
+          {% if user.is_staff or user.is_superuser %}
+            يمكنك <a class="underline font-semibold" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a> الآن.
+          {% else %}
+            {% if user.id == agreement.employee_id %}
+              يمكنك <a class="underline font-semibold" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a> الآن.
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endif %}
 
     <ol class="list-decimal pr-6 space-y-2">
       {% for item in agreement.clause_items.all %}
@@ -36,7 +86,7 @@
           {% endif %}
         </li>
       {% empty %}
-        <li class="text-slate-500">لا توجد بنود مثبتة بعد.</li>
+        <li class="text-slate-500">—</li>
       {% endfor %}
     </ol>
   </div>
@@ -59,8 +109,14 @@
   <!-- أزرار -->
   <div class="flex flex-wrap gap-3 justify-between print:hidden">
     <div class="flex gap-2">
-      {% if user.is_authenticated and (user.is_staff or user.is_superuser) %}
-        <a class="btn btn-ghost" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a>
+      {% if user.is_authenticated %}
+        {% if user.is_staff or user.is_superuser %}
+          <a class="btn btn-ghost" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a>
+        {% else %}
+          {% if user.id == agreement.employee_id %}
+            <a class="btn btn-ghost" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a>
+          {% endif %}
+        {% endif %}
       {% endif %}
       <a class="btn btn-ghost" href="{% url 'agreements:edit' agreement.pk %}">تحرير</a>
     </div>
