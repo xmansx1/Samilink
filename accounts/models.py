@@ -1,10 +1,15 @@
+# accounts/models.py
+from __future__ import annotations
+
+from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models.functions import Lower
 from django.utils import timezone
-from django.conf import settings
+
 
 # ---------------------------------------------
 # أدوات تطبيع الجوال إلى E.164 بدون مكتبات خارجية
@@ -48,7 +53,6 @@ def normalize_to_e164(raw_phone: str, default_cc: str = "966") -> str | None:
 
     # أرقام فقط (مع إزالة أي فواصل/مسافات/رموز)
     digits = _digits_only(s)
-
     if not digits:
         raise ValidationError("رقم جوال غير صالح.")
 
@@ -60,7 +64,6 @@ def normalize_to_e164(raw_phone: str, default_cc: str = "966") -> str | None:
 
     # إذا بدأ بـ 0 يليه رقم (غالبًا صيغة محلية: 05...): نحذف 0 ونضيف CC
     if digits.startswith("0"):
-        # احذف الصفر المبدئي
         local = digits[1:]
         candidate = f"+{default_cc}{local}"
         E164_VALIDATOR(candidate)
@@ -73,15 +76,19 @@ def normalize_to_e164(raw_phone: str, default_cc: str = "966") -> str | None:
 
 
 # ---------------------------------------------
-# مدير المستخدم
+# مدير المستخدم — يعتمد البريد فقط كهوية
 # ---------------------------------------------
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
+    def _normalize_email_ci(self, email: str) -> str:
+        # normalize_email تُصلح الدومين؛ ونحوّل الكل لحروف صغيرة لثبات المقارنة
+        return (self.normalize_email(email) or "").strip().lower()
+
     def _create_user(self, email, password, **extra_fields):
         if not email:
             raise ValueError("البريد الإلكتروني مطلوب")
-        email = self.normalize_email(email)
+        email = self._normalize_email_ci(email)
 
         user = self.model(email=email, **extra_fields)
         if password:
@@ -109,7 +116,7 @@ class UserManager(BaseUserManager):
 
 
 # ---------------------------------------------
-# نموذج المستخدم
+# نموذج المستخدم — البريد هو USERNAME_FIELD
 # ---------------------------------------------
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
@@ -118,9 +125,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         EMPLOYEE = "employee", "موظف"
         CLIENT = "client", "عميل"
 
-    email = models.EmailField("البريد الإلكتروني", unique=True)
+    # نستخدم البريد كهوية وحيدة للدخول
+    email = models.EmailField("البريد الإلكتروني", unique=True, db_index=True)
 
-    # الجوال اختياري في الإدخال، لكن عند وجوده يُحفظ دائمًا بصيغة دولية E.164
+    # الجوال اختياري؛ عند وجوده يُحفظ بصيغة دولية E.164
     phone = models.CharField(
         "الجوال",
         max_length=16,  # + ثم حتى 15 رقم
@@ -141,7 +149,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS: list[str] = []
 
     class Meta:
         verbose_name = "مستخدم"
@@ -151,16 +159,26 @@ class User(AbstractBaseUser, PermissionsMixin):
             models.Index(fields=["email"]),
             models.Index(fields=["phone"]),
         ]
+        # ضمان تفرّد البريد بدون حساسية حالة الأحرف (يعمل بكفاءة على PostgreSQL)
+        constraints = [
+            models.UniqueConstraint(
+                Lower("email"), name="uniq_user_email_ci"
+            ),
+        ]
 
     # -----------------------
     # تطبيع قبل الحفظ
     # -----------------------
     def clean(self):
         """
-        تُطبّع رقم الجوال إلى E.164 قبل الحفظ.
-        تُستخدم من admin/forms وعند استدعاء full_clean().
+        - تطبيع البريد إلى lower/strip.
+        - تطبيع رقم الجوال إلى E.164 قبل الحفظ.
+        تُستدعى من admin/forms أو عبر full_clean().
         """
         super().clean()
+        if self.email:
+            self.email = (self.email or "").strip().lower()
+
         default_cc = getattr(settings, "PHONE_DEFAULT_COUNTRY_CODE", "966")  # 966 افتراضياً (السعودية)
         if self.phone:
             normalized = normalize_to_e164(self.phone, default_cc=default_cc)
@@ -168,9 +186,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def save(self, *args, **kwargs):
         # نضمن التطبيع حتى عند حفظ بدون استدعاء full_clean()
+        if self.email:
+            self.email = (self.email or "").strip().lower()
+
         default_cc = getattr(settings, "PHONE_DEFAULT_COUNTRY_CODE", "966")
         if self.phone:
             self.phone = normalize_to_e164(self.phone, default_cc=default_cc)
+
         return super().save(*args, **kwargs)
 
     # -----------------------
@@ -184,13 +206,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def whatsapp_link(self) -> str | None:
         """
-        يولد رابط واتساب مباشر آمن (wa.me) للرقم المخزن دوليًا.
+        رابط واتساب مباشر آمن (wa.me) للرقم المخزن دوليًا.
         لا يضيف نصًا. يمكنك لاحقًا إضافة ?text=... مع urlencode.
         """
         if not self.phone:
             return None
-        # إزالة علامة + لـ wa.me
         return f"https://wa.me/{self.phone[1:]}" if self.phone.startswith("+") else f"https://wa.me/{self.phone}"
-    
+
+    def get_full_name(self) -> str:
+        return self.name or self.email
+
+    def get_short_name(self) -> str:
+        return (self.name or self.email).split(" ")[0]
+
     def __str__(self):
         return self.name or self.email

@@ -1,30 +1,246 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}سبب رفض الاتفاقية #{{ agreement.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .shake-hover {
+    transition: all 0.3s ease;
+  }
+  
+  .shake-hover:hover {
+    transform: translateX(-5px);
+  }
+  
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .dark .glass-effect {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .rejection-gradient {
+    background: linear-gradient(135deg, #fecaca 0%, #fed7aa 50%, #fef3c7 100%);
+  }
+  
+  .dark .rejection-gradient {
+    background: linear-gradient(135deg, #7f1d1d 0%, #9a3412 50%, #78350f 100%);
+  }
+  
+  .btn-glow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-glow:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+  }
+  
+  .pulse-warning {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  .textarea-focus:focus {
+    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1);
+    border-color: #f43f5e;
+  }
+  
+  .agreement-info-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-left: 4px solid #f43f5e;
+  }
+  
+  .dark .agreement-info-card {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-left: 4px solid #e11d48;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="py-10 max-w-2xl mx-auto rtl" dir="rtl">
-  <div class="rounded-2xl border bg-white/70 backdrop-blur shadow-glass-lg">
-    <div class="p-6 border-b bg-gradient-to-l from-rose-50 to-amber-50 rounded-t-2xl">
-      <h1 class="text-xl font-extrabold text-slate-900">رفض الاتفاقية</h1>
-      <p class="mt-1 text-slate-600 text-sm">
-        الرجاء كتابة سبب واضح لرفض الاتفاقية ليقوم الموظف بتعديلها وإعادة إرسالها.
-      </p>
-    </div>
-    <form method="post" class="p-6 space-y-4">
-      {% csrf_token %}
-      <div>
-        <label class="block mb-1 font-semibold">سبب الرفض</label>
-        <textarea name="reason" rows="5" class="input w-full" required minlength="5"
-                  placeholder="مثال: أحتاج تعديل عدد الصفحات، وتقسيم الدفعات على 3 مراحل بدلًا من 2."></textarea>
+  <!-- البطاقة الرئيسية -->
+  <div class="rounded-2xl glass-effect shadow-2xl fade-in">
+    <!-- الهيدر مع التدرج اللوني -->
+    <div class="p-8 border-b rejection-gradient rounded-t-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center ml-4 pulse-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">رفض الاتفاقية #{{ agreement.id }}</h1>
+            <p class="mt-2 text-slate-700 dark:text-slate-300 text-sm flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              الرجاء كتابة سبب واضح لرفض الاتفاقية ليقوم الموظف بتعديلها وإعادة إرسالها.
+            </p>
+          </div>
+        </div>
       </div>
-      <div class="flex items-center gap-3">
-        <button type="submit" class="px-4 py-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700">
-          تأكيد الرفض
+    </div>
+
+    <!-- معلومات الاتفاقية -->
+    <div class="p-6 border-b">
+      <div class="agreement-info-card p-4 rounded-lg">
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div class="text-slate-500 dark:text-slate-400 text-xs">عنوان الاتفاقية</div>
+            <div class="font-semibold text-slate-800 dark:text-slate-200">{{ agreement.title }}</div>
+          </div>
+          <div>
+            <div class="text-slate-500 dark:text-slate-400 text-xs">المبلغ</div>
+            <div class="font-semibold text-slate-800 dark:text-slate-200">{{ agreement.total_amount|floatformat:2 }} ر.س</div>
+          </div>
+          <div>
+            <div class="text-slate-500 dark:text-slate-400 text-xs">المدة</div>
+            <div class="font-semibold text-slate-800 dark:text-slate-200">{{ agreement.duration_days }} يوم</div>
+          </div>
+          <div>
+            <div class="text-slate-500 dark:text-slate-400 text-xs">الموظف</div>
+            <div class="font-semibold text-slate-800 dark:text-slate-200">{{ agreement.employee_display }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- نموذج الرفض -->
+    <form method="post" class="p-8 space-y-6">
+      {% csrf_token %}
+      
+      <!-- حقل سبب الرفض -->
+      <div class="space-y-3">
+        <label class="block text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          سبب الرفض
+        </label>
+        
+        <div class="relative">
+          <textarea 
+            name="reason" 
+            rows="6" 
+            class="textarea-focus w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none transition-all duration-200" 
+            required 
+            minlength="5"
+            placeholder="يرجى كتابة سبب واضح ومفصل لرفض الاتفاقية...&#10;&#10;مثال:&#10;- أحتاج تعديل عدد الصفحات من 5 إلى 10 صفحات&#10;- تقسيم الدفعات على 3 مراحل بدلًا من 2&#10;- تعديل المدة لتصبح 14 يوم بدلاً من 7 أيام"></textarea>
+          
+          <div class="absolute bottom-3 left-3 text-xs text-slate-400">
+            ⚠️ سيتم إرسال هذا السبب للموظف ليقوم بالتعديلات المطلوبة
+          </div>
+        </div>
+        
+        <!-- نصائح لكتابة سبب جيد -->
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h4 class="font-semibold text-blue-800 dark:text-blue-300 text-sm flex items-center mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            نصائح لكتابة سبب واضح:
+          </h4>
+          <ul class="text-blue-700 dark:text-blue-400 text-xs space-y-1 list-disc pr-4">
+            <li>اذكر النقاط التي تحتاج تعديل بشكل محدد</li>
+            <li>اقترح حلولاً بديلة إذا كان ذلك ممكناً</li>
+            <li>كن واضحاً في المتطلبات والتوقعات</li>
+            <li>تجنب العبارات العامة وغير المحددة</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- أزرار الإجراء -->
+      <div class="flex items-center gap-4 pt-4">
+        <button type="submit" class="btn-glow px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center shake-hover">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          تأكيد الرفض وإرسال السبب
         </button>
-        <a href="{% url 'agreements:detail' agreement.id %}" class="px-4 py-2 rounded-xl border hover:bg-slate-50">
+        
+        <a href="{% url 'agreements:detail' agreement.id %}" class="px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-all duration-200 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
           العودة للتفاصيل
         </a>
       </div>
     </form>
   </div>
+
+  <!-- معلومات إضافية -->
+  <div class="mt-6 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+    <div class="flex items-start">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-500 ml-3 mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>
+        <h3 class="font-semibold text-slate-800 dark:text-slate-200 mb-2">ماذا يحدث بعد الرفض؟</h3>
+        <ul class="text-slate-600 dark:text-slate-400 text-sm space-y-2 list-disc pr-4">
+          <li>سيتم إرسال سبب الرفض إلى الموظف المسؤول عن الاتفاقية</li>
+          <li>سيقوم الموظف بمراجعة الملاحظات وإجراء التعديلات المطلوبة</li>
+          <li>سيتم إرسال الاتفاقية المعدلة لك للمراجعة مرة أخرى</li>
+          <li>يمكنك متابعة حالة الاتفاقية من صفحة التفاصيل</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 </section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // إضافة تأثيرات تفاعلية للنص
+    const textarea = document.querySelector('textarea[name="reason"]');
+    
+    if (textarea) {
+      // تحديث العداد
+      const updateCounter = () => {
+        const length = textarea.value.length;
+        const minLength = textarea.getAttribute('minlength');
+        
+        if (length < minLength) {
+          textarea.style.borderColor = '#f43f5e';
+        } else {
+          textarea.style.borderColor = '#22c55e';
+        }
+      };
+      
+      textarea.addEventListener('input', updateCounter);
+      updateCounter(); // التهيئة الأولى
+    }
+    
+    // تأثير تحذيري عند التمرير على زر الرفض
+    const rejectBtn = document.querySelector('button[type="submit"]');
+    
+    rejectBtn.addEventListener('mouseenter', function() {
+      this.classList.add('pulse-warning');
+    });
+    
+    rejectBtn.addEventListener('mouseleave', function() {
+      this.classList.remove('pulse-warning');
+    });
+  });
+</script>
 {% endblock %}

@@ -1,11 +1,14 @@
 from django.urls import path
-from django.http import HttpResponse
+from . import views
 
 app_name = "disputes"
 
-def index(request):
-    return HttpResponse("Disputes OK")
-
 urlpatterns = [
-    path("", index, name="index"),
+    # فتح نزاع على طلب
+    path("request/<int:request_id>/open/", views.dispute_create, name="open"),
+    path("request/<int:request_id>/open/", views.open_request_dispute, name="open"),
+    path("request/<int:pk>/open/", views.open_request_dispute, name="open"),
+
+    # تحديث حالة نزاع
+    path("update/<int:dispute_id>/", views.dispute_update_status, name="update"),
 ]

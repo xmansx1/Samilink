@@ -1,0 +1,121 @@
+{# finance/templates/finance/invoice_list.html #}
+{% extends "base.html" %}
+{% block title %}فواتير الاتفاقية #{{ agreement.id }}{% endblock %}
+
+{% block content %}
+<section class="max-w-6xl mx-auto p-6 rtl" dir="rtl">
+
+  <!-- رأس الصفحة -->
+  <header class="mb-6">
+    <h1 class="text-2xl font-extrabold">فواتير الاتفاقية</h1>
+    <p class="text-slate-600 dark:text-slate-400">
+      طلب #{{ agreement.request.id }} — {{ agreement.title }}
+    </p>
+
+    <div class="grid md:grid-cols-3 gap-3 text-sm mt-3">
+      <div class="rounded-xl border p-3 bg-white/70 dark:bg-slate-800/70">
+        إجمالي الاتفاقية:
+        <strong>{{ agreement.total_amount|floatformat:2 }}</strong> ر.س
+      </div>
+      <div class="rounded-xl border p-3 bg-white/70 dark:bg-slate-800/70">
+        غير مدفوع:
+        <strong>{{ totals.unpaid|default:0|floatformat:2 }}</strong> ر.س
+      </div>
+      <div class="rounded-xl border p-3 bg-white/70 dark:bg-slate-800/70">
+        مدفوع:
+        <strong class="text-emerald-600">{{ totals.paid|default:0|floatformat:2 }}</strong> ر.س
+      </div>
+    </div>
+
+    <div class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+      ملاحظة: الفواتير تولَّد تلقائيًا من الدفعات (Milestones). إذا لم تظهر فاتورة لدفعة ما، أعد فتح الصفحة.
+    </div>
+  </header>
+
+  <!-- جدول الفواتير -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-4 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-right text-slate-500">
+          <th class="p-2">#</th>
+          <th class="p-2">الدفعة</th>
+          <th class="p-2">المبلغ</th>
+          <th class="p-2">الحالة</th>
+          <th class="p-2">أُصدرت</th>
+          <th class="p-2">سُدِّدت</th>
+          <th class="p-2">طريقة/مرجع</th>
+          <th class="p-2">إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+          <tr class="border-t">
+            <td class="p-2">{{ inv.id }}</td>
+
+            <td class="p-2">
+              {% if inv.milestone %}
+                {{ inv.milestone.title }} <span class="text-xs text-slate-500">— ترتيب {{ inv.milestone.order }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <td class="p-2">{{ inv.amount|floatformat:2 }} ر.س</td>
+            <td class="p-2">
+              <span class="inline-flex items-center gap-2">
+                <span class="h-2 w-2 rounded-full {% if inv.status == 'paid' %}bg-emerald-500{% else %}bg-amber-500{% endif %}"></span>
+                {{ inv.get_status_display }}
+              </span>
+            </td>
+
+            <td class="p-2">{{ inv.issued_at|date:"Y-m-d H:i" }}</td>
+            <td class="p-2">
+              {% if inv.paid_at %}{{ inv.paid_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+            </td>
+
+            <td class="p-2">
+              {% if inv.method %}{{ inv.method }}{% else %}—{% endif %}
+              {% if inv.ref_code %}<span class="text-slate-400">/</span> {{ inv.ref_code }}{% endif %}
+            </td>
+
+            <td class="p-2">
+              {% if inv.status == 'unpaid' %}
+                <form method="post" action="{% url 'finance:mark_invoice_paid' inv.id %}" class="flex flex-wrap gap-2 items-center">
+                  {% csrf_token %}
+                  <input type="text" name="method" class="input w-28" placeholder="طريقة">
+                  <input type="text" name="ref_code" class="input w-40" placeholder="مرجع">
+                  <button class="btn btn-success">وسم كمدفوعة</button>
+                </form>
+              {% else %}
+                <span class="text-emerald-600">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="8" class="p-4 text-slate-500">لا توجد فواتير.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+
+      {% if invoices %}
+        <tfoot>
+          <tr class="border-t bg-slate-50 dark:bg-slate-900/40">
+            <td class="p-2 font-semibold" colspan="2">الإجماليات</td>
+            <td class="p-2 font-bold">{{ totals.total|default:0|floatformat:2 }} ر.س</td>
+            <td class="p-2"></td>
+            <td class="p-2" colspan="2"></td>
+            <td class="p-2 text-emerald-600">مدفوع: {{ totals.paid|default:0|floatformat:2 }} ر.س</td>
+            <td class="p-2 text-amber-600">غير مدفوع: {{ totals.unpaid|default:0|floatformat:2 }} ر.س</td>
+          </tr>
+        </tfoot>
+      {% endif %}
+    </table>
+  </div>
+
+  <div class="mt-6 flex gap-3">
+    <a class="btn btn-light" href="{% url 'finance:inprogress' %}">عودة لقائمة التنفيذ</a>
+    <a class="btn btn-ghost" href="{% url 'agreements:detail' agreement.id %}">فتح الاتفاقية</a>
+  </div>
+</section>
+{% endblock %}

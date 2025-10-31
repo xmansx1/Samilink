@@ -1,13 +1,14 @@
-# agreements/models.py
 from __future__ import annotations
 
 from decimal import Decimal, ROUND_HALF_UP
+from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from django.utils.html import strip_tags
+from django.urls import reverse
 
 User = settings.AUTH_USER_MODEL
 
@@ -25,9 +26,18 @@ _AR_WEEKDAYS = {
 }
 
 _AR_MONTHS = {
-    1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل",
-    5: "مايو", 6: "يونيو", 7: "يوليو", 8: "أغسطس",
-    9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر",
+    1: "يناير",
+    2: "فبراير",
+    3: "مارس",
+    4: "أبريل",
+    5: "مايو",
+    6: "يونيو",
+    7: "يوليو",
+    8: "أغسطس",
+    9: "سبتمبر",
+    10: "أكتوبر",
+    11: "نوفمبر",
+    12: "ديسمبر",
 }
 
 
@@ -75,10 +85,8 @@ class Agreement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # ============
-    # تحقّقات عامة
-    # ============
-    def clean(self):
+    # ============ تحقّقات عامة ============
+    def clean(self) -> None:
         # دور الموظف (اختياري لو عندك role على المستخدم)
         role = getattr(self.employee, "role", None)
         if role and role not in {"employee", "admin"}:
@@ -100,7 +108,9 @@ class Agreement(models.Model):
         if ms:
             sum_amounts = sum((m.amount or Decimal("0.00")) for m in ms)
             if (sum_amounts - self.total_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) != Decimal("0.00"):
-                raise ValidationError(f"مجموع مبالغ الدفعات ({sum_amounts}) لا يساوي إجمالي الاتفاقية ({self.total_amount}).")
+                raise ValidationError(
+                    f"مجموع مبالغ الدفعات ({sum_amounts}) لا يساوي إجمالي الاتفاقية ({self.total_amount})."
+                )
 
         # تنقية نصوص حرّة
         if self.text:
@@ -108,11 +118,17 @@ class Agreement(models.Model):
         if self.rejection_reason:
             self.rejection_reason = strip_tags(self.rejection_reason).strip()
 
-    # ===========
-    # خصائص/مساعدات للعرض
-    # ===========
-    def __str__(self):
+        # تنعيم المبلغ (حماية ضد قيم ثلاثية الكسور)
+        if self.total_amount is not None:
+            self.total_amount = Decimal(self.total_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    # =========== خصائص/مساعدات للعرض ===========
+    def __str__(self) -> str:  # pragma: no cover
         return f"Agreement#{self.pk} R{self.request_id} — {self.get_status_display()}"
+
+    def get_absolute_url(self) -> str:
+        # عدّل الاسم/المسار حسب مشروعك إن لزم
+        return reverse("agreements:agreement_detail", kwargs={"pk": self.pk})
 
     def get_day_name_ar(self) -> str:
         dt = getattr(self, "created_at", None) or timezone.now()
@@ -124,11 +140,7 @@ class Agreement(models.Model):
 
     def get_intro_paragraph_ar(self) -> str:
         """
-        يُولّد نص الجزء الأول كما في التصميم المعتمد:
-        - اليوم/التاريخ بالعربية
-        - العميل/الموظف
-        - عنوان الطلب/الاتفاقية
-        - المبلغ والمدة
+        يُولّد نص الجزء الأول كما في التصميم المعتمد.
         """
         client = self.client_display
         employee = self.employee_display
@@ -149,10 +161,15 @@ class Agreement(models.Model):
         """
         req = self.request
         for attr in ("client", "customer", "user", "owner", "created_by"):
-            obj = getattr(req, attr, None)
+            obj: Any = getattr(req, attr, None)
             if obj:
-                # إن وُجد get_full_name استخدمه، وإلا حول الكائن لنص
-                return getattr(obj, "get_full_name", lambda: str(obj))()
+                if hasattr(obj, "get_full_name"):
+                    try:
+                        return obj.get_full_name() or str(obj)
+                    except Exception:  # pragma: no cover
+                        return str(obj)
+                name = getattr(obj, "name", None) or getattr(obj, "username", None) or getattr(obj, "email", None)
+                return str(name or obj)
         return "—"
 
     @property
@@ -160,12 +177,22 @@ class Agreement(models.Model):
         emp = getattr(self, "employee", None)
         if not emp:
             return "—"
-        return getattr(emp, "get_full_name", lambda: str(emp))()
+        if hasattr(emp, "get_full_name"):
+            try:
+                return emp.get_full_name() or str(emp)
+            except Exception:  # pragma: no cover
+                return str(emp)
+        return str(getattr(emp, "name", None) or getattr(emp, "email", None) or emp)
 
     class Meta:
         indexes = [
             models.Index(fields=["status", "created_at"]),
             models.Index(fields=["employee"]),
+        ]
+        constraints = [
+            # ضمان عدم السالب في الإجمالي على مستوى DB (حيثما يدعم الـ backend)
+            models.CheckConstraint(check=models.Q(total_amount__gte=0), name="agreement_total_amount_gte_0"),
+            models.CheckConstraint(check=models.Q(duration_days__gte=1), name="agreement_duration_days_gte_1"),
         ]
         verbose_name = "اتفاقية"
         verbose_name_plural = "اتفاقيات"
@@ -174,7 +201,16 @@ class Agreement(models.Model):
 class Milestone(models.Model):
     """
     دفعات/مراحل الاتفاقية.
+    تدعم حالات: قيد التنفيذ → تم التسليم → (مرفوض/معتمَد) → مدفوع.
     """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "قيد التنفيذ"
+        DELIVERED = "delivered", "تم التسليم"
+        APPROVED = "approved", "معتمدة"
+        REJECTED = "rejected", "مرفوضة"
+        PAID = "paid", "مدفوعة"
+
     agreement = models.ForeignKey(
         Agreement, on_delete=models.CASCADE, related_name="milestones", verbose_name="الاتفاقية"
     )
@@ -183,26 +219,157 @@ class Milestone(models.Model):
     order = models.PositiveIntegerField("الترتيب", default=1)
     due_days = models.PositiveIntegerField("مستحق بعد (أيام) من البداية", null=True, blank=True)
 
+    # الحالة العامة
+    status = models.CharField("الحالة", max_length=12, choices=Status.choices, default=Status.PENDING)
+
+    # مسار التنفيذ/التسليم والاعتماد والسداد
+    delivered_at = models.DateTimeField("وقت التسليم", null=True, blank=True)
+    delivered_note = models.TextField("ملاحظة التسليم", blank=True)
+
+    approved_at = models.DateTimeField("وقت الاعتماد", null=True, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="approved_milestones",
+        verbose_name="اعتمدت بواسطة",
+    )
+    rejected_reason = models.TextField("سبب الرفض", blank=True)
+
+    paid_at = models.DateTimeField("وقت السداد", null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["order", "id"]
-        indexes = [models.Index(fields=["agreement", "order"])]
+        indexes = [
+            models.Index(fields=["agreement", "order"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["delivered_at"]),
+            models.Index(fields=["approved_at"]),
+            models.Index(fields=["paid_at"]),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["agreement", "order"], name="uniq_milestone_order_per_agreement"
             ),
+            models.CheckConstraint(check=models.Q(amount__gte=0), name="milestone_amount_gte_0"),
+            models.CheckConstraint(check=models.Q(order__gte=1), name="milestone_order_gte_1"),
         ]
         verbose_name = "دفعة"
         verbose_name_plural = "دفعات"
 
-    def clean(self):
+    # -------- تحقّق حقول --------
+    def clean(self) -> None:
         if self.amount is None or self.amount < 0:
             raise ValidationError("مبلغ الدفعة يجب أن يكون رقمًا موجبًا أو صفرًا.")
         if self.order < 1:
             raise ValidationError("ترتيب الدفعة يجب أن يكون 1 أو أكبر.")
+        # تنعيم المبلغ
+        if self.amount is not None:
+            self.amount = Decimal(self.amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    def __str__(self):
+    # -------- روابط مساعدة --------
+    def get_absolute_url(self) -> str:
+        # عدّل الاسم/المسار حسب مشروعك إن لزم
+        return reverse("agreements:milestone_detail", kwargs={"pk": self.pk})
+
+    # -------- حالات مساعدة (قراءة فقط) --------
+    @property
+    def is_delivered(self) -> bool:
+        return self.status == self.Status.DELIVERED
+
+    # ⚠️ Backward-compatible setter لمنع AttributeError في أي view قد يكتب: ms.is_delivered = True
+    @is_delivered.setter
+    def is_delivered(self, value: bool) -> None:
+        """
+        مهيّأ للتوافق الخلفي مع شيفرات قديمة كانت تعيّن is_delivered مباشرة.
+        - True: يمر عبر mark_delivered() (يضع الوقت والحالة وينظّف سبب الرفض).
+        - False: يعيدها إلى pending (إن لم تكن مدفوعة)، ويمسح وقت التسليم.
+        """
+        if bool(value):
+            # استخدم الملاحظة الحالية إن وُجدت
+            note = (self.delivered_note or "").strip()
+            self.mark_delivered(note=note)
+        else:
+            if self.is_paid:
+                raise ValidationError("لا يمكن إلغاء التسليم بعد السداد.")
+            # الرجوع خطوة للخلف
+            self.status = self.Status.PENDING
+            self.delivered_at = None
+            # لا نمسح delivered_note (قد تكون مفيدة تاريخيًا)
+            self.rejected_reason = ""
+            self.save(update_fields=["status", "delivered_at", "rejected_reason"])
+
+    @property
+    def is_pending_review(self) -> bool:
+        # تعتبر "بانتظار المراجعة" بمجرد وجود delivered_at بدون اعتماد/رفض
+        return bool(self.delivered_at and not self.approved_at and not self.rejected_reason)
+
+    @property
+    def is_approved(self) -> bool:
+        return self.status == self.Status.APPROVED
+
+    @property
+    def is_rejected(self) -> bool:
+        return self.status == self.Status.REJECTED
+
+    @property
+    def is_paid(self) -> bool:
+        return self.status == self.Status.PAID
+
+    # -------- أفعال الحالة --------
+    def mark_delivered(self, note: str = "") -> None:
+        """
+        يعلّم المرحلة كـ "مُسلّمة" من قبل الموظف.
+        """
+        if self.is_approved or self.is_paid:
+            raise ValidationError("لا يمكن تسليم مرحلة معتمَدة أو مدفوعة.")
+        self.status = self.Status.DELIVERED
+        self.delivered_at = timezone.now()
+        self.delivered_note = (note or "").strip()
+        self.rejected_reason = ""
+        self.save(update_fields=["status", "delivered_at", "delivered_note", "rejected_reason"])
+
+    def approve(self, user) -> None:
+        """
+        يعتمد المرحلة (من العميل أو الأدمن).
+        """
+        if self.is_paid:
+            raise ValidationError("لا يمكن اعتماد مرحلة مدفوعة.")
+        self.status = self.Status.APPROVED
+        self.approved_at = timezone.now()
+        self.approved_by = user
+        self.rejected_reason = ""
+        self.save(update_fields=["status", "approved_at", "approved_by", "rejected_reason"])
+
+    def reject(self, reason: str) -> None:
+        """
+        يرفض المرحلة مع سبب واضح.
+        """
+        reason = (reason or "").strip()
+        if len(reason) < 3:
+            raise ValidationError("سبب الرفض قصير جدًا.")
+        if self.is_paid:
+            raise ValidationError("لا يمكن رفض مرحلة مدفوعة.")
+        self.status = self.Status.REJECTED
+        self.approved_at = None
+        self.approved_by = None
+        self.rejected_reason = reason
+        self.save(update_fields=["status", "approved_at", "approved_by", "rejected_reason"])
+
+    def mark_paid(self) -> None:
+        """
+        تعليم المرحلة كمدفوعة (مالية).
+        """
+        if not self.is_approved:
+            raise ValidationError("لا يمكن السداد قبل اعتماد المرحلة.")
+        self.status = self.Status.PAID
+        self.paid_at = timezone.now()
+        self.save(update_fields=["status", "paid_at"])
+
+    def __str__(self) -> str:  # pragma: no cover
         return f"Milestone#{self.pk} A{self.agreement_id} — {self.title} ({self.order})"
 
 
@@ -210,7 +377,7 @@ class AgreementClause(models.Model):
     """
     بند اتفاقية قابل لإعادة الاستخدام. يُدار من الأدمن.
     """
-    key = models.SlugField("المعرف", unique=True, help_text="معرف فريد (بالإنجليزية) للبند")
+    key = models.SlugField("المعرّف الفريد", unique=True, help_text="معرف فريد (بالإنجليزية) للبند")
     title = models.CharField("عنوان البند", max_length=200)
     body = models.TextField("نص البند")
     is_active = models.BooleanField("مفعل؟", default=True)
@@ -222,7 +389,7 @@ class AgreementClause(models.Model):
         verbose_name_plural = "بنود الاتفاقية"
         ordering = ["title"]
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f"{self.title} ({'مفعل' if self.is_active else 'موقوف'})"
 
 
@@ -259,7 +426,7 @@ class AgreementClauseItem(models.Model):
             ),
         ]
 
-    def clean(self):
+    def clean(self) -> None:
         # يجب وجود بند جاهز أو نص مخصص
         if not self.clause and not (self.custom_text or "").strip():
             raise ValidationError("يجب تحديد بند جاهز أو كتابة نص مخصص.")
@@ -274,7 +441,7 @@ class AgreementClauseItem(models.Model):
         if self.position < 1:
             raise ValidationError("ترتيب البند يجب أن يكون 1 أو أكبر.")
 
-    def __str__(self):
+    def __str__(self) -> str:  # pragma: no cover
         if self.clause:
             return f"[{self.position}] {self.clause.title}"
         return f"[{self.position}] بند مخصص: {self.custom_text[:30]}..."

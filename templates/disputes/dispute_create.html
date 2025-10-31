@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}فتح نزاع — طلب #{{ req.pk }}{% endblock %}
+{% block content %}
+<section class="max-w-2xl mx-auto rtl py-8" dir="rtl">
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 space-y-4">
+    <h1 class="text-xl font-bold">فتح نزاع للطلب #{{ req.pk }}</h1>
+    <form method="post" onsubmit="return confirm('سيتم فتح نزاع لهذا الطلب. تأكيد؟');">
+      {% csrf_token %}
+      <div class="space-y-3">
+        <label class="block text-sm text-slate-600 dark:text-slate-300">العنوان</label>
+        {{ form.title }}
+        <label class="block text-sm text-slate-600 dark:text-slate-300">التفاصيل</label>
+        {{ form.description }}
+      </div>
+      <div class="mt-4 flex items-center gap-2">
+        <button class="btn btn-danger">فتح نزاع</button>
+        <a href="{{ req.get_absolute_url }}" class="btn btn-ghost">رجوع</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

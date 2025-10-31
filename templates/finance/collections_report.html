@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}تقرير التحصيل{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .btn-glow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-glow:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+  }
+  
+  .stat-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-left: 4px solid;
+  }
+  
+  .dark .stat-card {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  }
+  
+  .table-row {
+    transition: all 0.2s ease;
+  }
+  
+  .table-row:hover {
+    background-color: #f8fafc;
+    transform: translateX(-5px);
+  }
+  
+  .dark .table-row:hover {
+    background-color: #1e293b;
+  }
+  
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  
+  .status-paid {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+  
+  .dark .status-paid {
+    background-color: #064e3b;
+    color: #a7f3d0;
+  }
+  
+  .status-unpaid {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+  
+  .dark .status-unpaid {
+    background-color: #78350f;
+    color: #fcd34d;
+  }
+  
+  .filter-input {
+    transition: all 0.2s ease;
+  }
+  
+  .filter-input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto rtl p-6" dir="rtl">
+
+  <!-- الهيدر الرئيسي -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-4 fade-in">
+    <div class="flex items-center">
+      <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center ml-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">تقرير التحصيل</h1>
+        <p class="text-slate-600 dark:text-slate-300 mt-1">تحليل شامل للفواتير والمدفوعات</p>
+      </div>
+    </div>
+
+    <!-- نموذج التصفية -->
+    <form method="get" class="flex flex-wrap gap-3 items-end bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
+      <div class="space-y-1">
+        <label class="text-xs text-slate-600 dark:text-slate-400 font-medium">الفترة</label>
+        <select name="period" class="filter-input input text-sm w-32">
+          <option value="30d" {% if period == '30d' or not period %}selected{% endif %}>آخر 30 يوم</option>
+          <option value="7d" {% if period == '7d' %}selected{% endif %}>آخر 7 أيام</option>
+          <option value="today" {% if period == 'today' %}selected{% endif %}>اليوم</option>
+          <option value="custom" {% if period == 'custom' %}selected{% endif %}>مخصّص</option>
+        </select>
+      </div>
+      
+      <div class="space-y-1">
+        <label class="text-xs text-slate-600 dark:text-slate-400 font-medium">من</label>
+        <input class="filter-input input text-sm w-32" type="date" name="from" value="{{ from }}">
+      </div>
+      
+      <div class="space-y-1">
+        <label class="text-xs text-slate-600 dark:text-slate-400 font-medium">إلى</label>
+        <input class="filter-input input text-sm w-32" type="date" name="to" value="{{ to }}">
+      </div>
+      
+      <div class="space-y-1">
+        <label class="text-xs text-slate-600 dark:text-slate-400 font-medium">الحالة</label>
+        <select name="status" class="filter-input input text-sm w-32">
+          <option value="" {% if not status_q %}selected{% endif %}>الكل</option>
+          <option value="unpaid" {% if status_q == 'unpaid' %}selected{% endif %}>غير مدفوعة</option>
+          <option value="paid" {% if status_q == 'paid' %}selected{% endif %}>مدفوعة</option>
+        </select>
+      </div>
+      
+      <div class="space-y-1">
+        <label class="text-xs text-slate-600 dark:text-slate-400 font-medium">طريقة السداد</label>
+        <select name="method" class="filter-input input text-sm w-32">
+          <option value="" {% if not method_q %}selected{% endif %}>الكل</option>
+          {% for m in methods %}
+            <option value="{{ m }}" {% if method_q == m %}selected{% endif %}>{{ m|default:"—" }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="space-y-1">
+        <label class="text-xs text-slate-600 dark:text-slate-400 font-medium">بحث</label>
+        <input class="filter-input input text-sm w-40" type="text" name="q" value="{{ q }}" placeholder="رقم الطلب/الاتفاقية/المرجع">
+      </div>
+      
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary btn-glow text-sm flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          تصفية
+        </button>
+        
+        <a class="btn btn-success btn-glow text-sm flex items-center" href="{% url 'finance:export_invoices_csv' %}?period={{ period }}&from={{ from }}&to={{ to }}&status={{ status_q }}&method={{ method_q }}&q={{ q|urlencode }}">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          تصدير CSV
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- بطاقات الإحصائيات الرئيسية -->
+  <div class="grid md:grid-cols-4 gap-6 mb-8 fade-in">
+    <div class="stat-card p-6 rounded-xl border border-slate-200 dark:border-slate-600 card-hover" style="border-left-color: #3b82f6;">
+      <div class="text-slate-500 dark:text-slate-400 text-sm mb-2 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        النطاق الزمني
+      </div>
+      <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{{ d1|date:"Y-m-d" }} → {{ d2|date:"Y-m-d" }}</div>
+    </div>
+    
+    <div class="stat-card p-6 rounded-xl border border-slate-200 dark:border-slate-600 card-hover" style="border-left-color: #6366f1;">
+      <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">إجمالي الفواتير</div>
+      <div class="text-2xl font-extrabold text-slate-900 dark:text-white">{{ totals.total|default:0|floatformat:2 }} ر.س</div>
+    </div>
+    
+    <div class="stat-card p-6 rounded-xl border border-slate-200 dark:border-slate-600 card-hover" style="border-left-color: #f59e0b;">
+      <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">غير مدفوع</div>
+      <div class="text-2xl font-extrabold text-amber-600 dark:text-amber-400">{{ totals.unpaid|default:0|floatformat:2 }} ر.س</div>
+    </div>
+    
+    <div class="stat-card p-6 rounded-xl border border-slate-200 dark:border-slate-600 card-hover" style="border-left-color: #10b981;">
+      <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">مدفوع</div>
+      <div class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{{ totals.paid|default:0|floatformat:2 }} ر.س</div>
+    </div>
+  </div>
+
+  <!-- إحصائيات طرق السداد -->
+  <div class="grid md:grid-cols-{{ by_method|length|add:1 }} gap-6 mb-8 fade-in">
+    {% for row in by_method %}
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-600 card-hover">
+        <div class="text-slate-500 dark:text-slate-400 text-sm mb-2 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+          {{ row.method|default:"غير محدد" }}
+        </div>
+        <div class="font-bold text-lg text-slate-800 dark:text-slate-200">{{ row.amt|default:0|floatformat:2 }} ر.س</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ row.cnt }} فاتورة</div>
+      </div>
+    {% empty %}
+      <div class="col-span-full bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-200 dark:border-slate-600 text-center">
+        <div class="text-slate-500 dark:text-slate-400">لا توجد بيانات بطريقة السداد الحالية.</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- جدول الفواتير -->
+  <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm overflow-hidden fade-in">
+    <div class="p-6 border-b border-slate-200 dark:border-slate-600">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        الفواتير ({{ invoices|length }})
+      </h2>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-700/50">
+          <tr class="text-right">
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">#</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">الاتفاقية</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">الدفعة</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">المبلغ</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">الحالة</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">طريقة السداد</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">أُصدرت</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">دُفعت</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300">مرجع</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200 dark:divide-slate-600">
+          {% for inv in invoices %}
+            <tr class="table-row">
+              <td class="p-4 font-medium text-slate-700 dark:text-slate-300">{{ inv.id }}</td>
+              <td class="p-4">
+                <a class="text-blue-600 dark:text-blue-400 hover:underline font-medium" href="{% url 'agreements:detail' inv.agreement.id %}">
+                  اتفاقية #{{ inv.agreement.id }}
+                </a>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">طلب #{{ inv.agreement.request.id }}</div>
+              </td>
+              <td class="p-4 text-slate-700 dark:text-slate-300">
+                {% if inv.milestone %}
+                  <span class="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs">{{ inv.milestone.title }}</span>
+                {% else %}
+                  <span class="text-slate-400">—</span>
+                {% endif %}
+              </td>
+              <td class="p-4 font-bold text-slate-800 dark:text-slate-200">{{ inv.amount|floatformat:2 }} ر.س</td>
+              <td class="p-4">
+                <span class="status-badge {% if inv.status == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
+                  {{ inv.get_status_display }}
+                </span>
+              </td>
+              <td class="p-4 text-slate-700 dark:text-slate-300">
+                {{ inv.method|default:"—" }}
+              </td>
+              <td class="p-4 text-slate-600 dark:text-slate-400">{{ inv.issued_at|date:"Y-m-d" }}</td>
+              <td class="p-4 text-slate-600 dark:text-slate-400">
+                {% if inv.paid_at %}
+                  <span class="text-emerald-600 dark:text-emerald-400">{{ inv.paid_at|date:"Y-m-d" }}</span>
+                {% else %}
+                  <span class="text-slate-400">—</span>
+                {% endif %}
+              </td>
+              <td class="p-4">
+                {% if inv.ref_code %}
+                  <code class="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs">{{ inv.ref_code }}</code>
+                {% else %}
+                  <span class="text-slate-400">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="9" class="p-8 text-center text-slate-500 dark:text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                لا توجد فواتير مطابقة للبحث
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // تحديث حقول التاريخ عند تغيير الفترة
+    const periodSelect = document.querySelector('select[name="period"]');
+    const fromInput = document.querySelector('input[name="from"]');
+    const toInput = document.querySelector('input[name="to"]');
+    
+    function updateDateFields() {
+      if (periodSelect.value !== 'custom') {
+        fromInput.disabled = true;
+        toInput.disabled = true;
+      } else {
+        fromInput.disabled = false;
+        toInput.disabled = false;
+      }
+    }
+    
+    periodSelect?.addEventListener('change', updateDateFields);
+    updateDateFields(); // التهيئة الأولية
+  });
+</script>
+{% endblock %}

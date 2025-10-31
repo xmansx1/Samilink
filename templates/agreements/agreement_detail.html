@@ -1,126 +1,352 @@
 {# agreements/templates/agreements/agreement_detail.html #}
 {% extends "base.html" %}
+{% load static %}
+{% block title %}اتفاقية — {{ agreement.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .gradient-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .dark .gradient-header {
+    background: linear-gradient(135deg, #4c51bf 0%, #7e22ce 100%);
+  }
+  
+  .btn-glow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-glow:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+  }
+  
+  .clause-item {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+  }
+  
+  .clause-item:hover {
+    border-left-color: #667eea;
+    background-color: rgba(102, 126, 234, 0.05);
+  }
+  
+  .dark .clause-item:hover {
+    background-color: rgba(102, 126, 234, 0.1);
+  }
+  
+  .signature-box {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px dashed #cbd5e0;
+  }
+  
+  .dark .signature-box {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border: 1px dashed #475569;
+  }
+  
+  .print-logo {
+    filter: grayscale(100%) brightness(0%);
+  }
+  
+  .dark .print-logo {
+    filter: grayscale(100%) brightness(100%);
+  }
+  
+  @media print {
+    .print-hidden {
+      display: none !important;
+    }
+    
+    .card-hover {
+      box-shadow: none !important;
+      border: 1px solid #e2e8f0 !important;
+    }
+    
+    .gradient-header {
+      background: none !important;
+      color: black !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-5xl mx-auto p-6 print:p-0" dir="rtl">
 
-  <!-- هيدر المنصة -->
-  <div class="mb-6 text-center">
-    <div class="text-xl font-bold">{{ SITE_NAME|default:"SamiLink" }}</div>
-    <div class="text-sm text-slate-500">توثيق اتفاقية خدمة</div>
+  <!-- هيدر المنصة - محسن -->
+  <div class="mb-8 text-center fade-in">
+    <div class="inline-flex items-center justify-center p-4 rounded-2xl gradient-header text-white shadow-lg mb-4">
+      <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center ml-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <div class="text-right">
+        <div class="text-2xl font-bold">{{ SITE_NAME|default:"SamiLink" }}</div>
+        <div class="text-sm opacity-90">توثيق اتفاقية خدمة</div>
+      </div>
+    </div>
+    <div class="text-lg text-slate-600 dark:text-slate-300 mt-2">وثيقة قانونية ملزمة للطرفين</div>
   </div>
 
-  <!-- بطاقة ملخص الاتفاقية (المبلغ/المدة/الحالة/الطلب) -->
-  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
+  <!-- بطاقة ملخص الاتفاقية (المبلغ/المدة/الحالة/الطلب) - محسنة -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow-lg mb-8 fade-in card-hover">
+    <div class="flex items-center mb-4">
+      <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center ml-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-slate-800 dark:text-white">ملخص الاتفاقية</h2>
+    </div>
+    
     <div class="grid md:grid-cols-4 gap-4 text-sm">
-      <div>
-        <div class="text-slate-500">المبلغ المتفق عليه</div>
-        <div class="font-semibold">{{ agreement.total_amount|floatformat:2 }} ر.س</div>
+      <div class="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg text-center">
+        <div class="text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+          </svg>
+          المبلغ المتفق عليه
+        </div>
+        <div class="font-semibold text-lg text-green-600 dark:text-green-400">{{ agreement.total_amount|floatformat:2 }} ر.س</div>
       </div>
-      <div>
-        <div class="text-slate-500">المدة المتفق عليها</div>
-        <div class="font-semibold">{{ agreement.duration_days }} يوم</div>
+      
+      <div class="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg text-center">
+        <div class="text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          المدة المتفق عليها
+        </div>
+        <div class="font-semibold text-lg text-amber-600 dark:text-amber-400">{{ agreement.duration_days }} يوم</div>
       </div>
-      <div>
-        <div class="text-slate-500">حالة الاتفاقية</div>
-        <div class="font-semibold">{{ agreement.get_status_display }}</div>
+      
+      <div class="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg text-center">
+        <div class="text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          حالة الاتفاقية
+        </div>
+        <div class="font-semibold text-lg">{{ agreement.get_status_display }}</div>
       </div>
-      <div>
-        <div class="text-slate-500">رقم الطلب</div>
-        <div class="font-semibold">
-          <a class="underline hover:no-underline" href="{% url 'marketplace:request_detail' agreement.request.id %}">#{{ agreement.request.id }}</a>
+      
+      <div class="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg text-center">
+        <div class="text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          رقم الطلب
+        </div>
+        <div class="font-semibold text-lg">
+          <a class="text-blue-600 dark:text-blue-400 hover:underline" href="{% url 'marketplace:request_detail' agreement.request.id %}">#{{ agreement.request.id }}</a>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- الجزء الأول -->
-  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
-    <h2 class="font-semibold mb-3">الجزء الأول</h2>
-    <p class="leading-8">
-      أنه في يوم <strong>{{ agreement.get_day_name_ar }}</strong> الموافق
-      <strong>{{ agreement.get_date_text_ar }}</strong>،
-      اتفق الطرف الأول <strong>(العميل) {{ agreement.client_display }}</strong>
-      مع الطرف الثاني <strong>(الموظف) {{ agreement.employee_display }}</strong>
-      على تنفيذ <strong>“{{ agreement.title }}”</strong>
-      بمبلغ <strong>{{ agreement.total_amount|floatformat:2 }} ر.س</strong>
-      ومدة تنفيذ <strong>{{ agreement.duration_days }} يومًا</strong>.
-    </p>
-    {% if agreement.text %}
-      <div class="mt-4 text-slate-700 dark:text-slate-200 leading-7 whitespace-pre-line">
-        {{ agreement.text }}
+  <!-- الجزء الأول - محسن -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow-lg mb-8 fade-in card-hover">
+    <div class="flex items-center mb-4">
+      <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center ml-3">
+        <span class="text-purple-600 dark:text-purple-300 font-bold">١</span>
       </div>
-    {% endif %}
+      <h2 class="text-xl font-bold text-slate-800 dark:text-white">الجزء الأول: تفاصيل الاتفاقية</h2>
+    </div>
+    
+    <div class="bg-slate-50 dark:bg-slate-700/30 p-5 rounded-xl border border-slate-200 dark:border-slate-600">
+      <p class="leading-8 text-slate-700 dark:text-slate-300 text-lg">
+        أنه في يوم <strong class="text-slate-800 dark:text-white">{{ agreement.get_day_name_ar }}</strong> الموافق
+        <strong class="text-slate-800 dark:text-white">{{ agreement.get_date_text_ar }}</strong>،
+        اتفق الطرف الأول <strong class="text-slate-800 dark:text-white">(العميل) {{ agreement.client_display }}</strong>
+        مع الطرف الثاني <strong class="text-slate-800 dark:text-white">(الموظف) {{ agreement.employee_display }}</strong>
+        على تنفيذ <strong class="text-slate-800 dark:text-white">"{{ agreement.title }}"</strong>
+        بمبلغ <strong class="text-green-600 dark:text-green-400">{{ agreement.total_amount|floatformat:2 }} ر.س</strong>
+        ومدة تنفيذ <strong class="text-amber-600 dark:text-amber-400">{{ agreement.duration_days }} يومًا</strong>.
+      </p>
+      
+      {% if agreement.text %}
+        <div class="mt-6 p-4 bg-white dark:bg-slate-600/30 rounded-lg border">
+          <h3 class="font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            تفاصيل إضافية
+          </h3>
+          <div class="text-slate-600 dark:text-slate-300 leading-7 whitespace-pre-line">
+            {{ agreement.text }}
+          </div>
+        </div>
+      {% endif %}
+    </div>
   </div>
 
-  <!-- الجزء الثاني: البنود (جاهزة + مخصصة) -->
-  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
-    <div class="flex items-center justify-between">
-      <h2 class="font-semibold mb-3">الجزء الثاني: البنود</h2>
-      <div class="text-xs rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1">
+  <!-- الجزء الثاني: البنود (جاهزة + مخصصة) - محسن -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow-lg mb-8 fade-in card-hover">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center">
+        <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center ml-3">
+          <span class="text-green-600 dark:text-green-300 font-bold">٢</span>
+        </div>
+        <h2 class="text-xl font-bold text-slate-800 dark:text-white">الجزء الثاني: البنود والشروط</h2>
+      </div>
+      <div class="text-xs rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 font-medium">
         {{ agreement.clause_items.count }} بند/بنود
       </div>
     </div>
 
     {% if agreement.clause_items.count == 0 %}
-      <div class="mb-4 p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-800">
+      <div class="mb-6 p-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
         لا توجد بنود مثبتة بعد.
         {% if user.is_authenticated %}
-          {% if user.is_staff or user.is_superuser %}
+          {% if user.is_staff or user.is_superuser or user.id == agreement.employee_id %}
             يمكنك <a class="underline font-semibold" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a> الآن.
-          {% else %}
-            {% if user.id == agreement.employee_id %}
-              يمكنك <a class="underline font-semibold" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a> الآن.
-            {% endif %}
           {% endif %}
         {% endif %}
       </div>
     {% endif %}
 
-    <ol class="list-decimal pr-6 space-y-2">
+    <ol class="space-y-4">
       {% for item in agreement.clause_items.all %}
-        <li class="leading-7">
-          {% if item.clause %}
-            <strong>{{ item.clause.title }}:</strong> {{ item.clause.body }}
-          {% else %}
-            {{ item.custom_text }}
-          {% endif %}
+        <li class="clause-item p-4 rounded-lg bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600">
+          <div class="flex">
+            <span class="flex items-center justify-center w-6 h-6 bg-slate-200 dark:bg-slate-600 rounded-full text-sm font-bold text-slate-700 dark:text-slate-300 ml-3 mt-1">
+              {{ forloop.counter }}
+            </span>
+            <div class="flex-1">
+              {% if item.clause %}
+                <strong class="text-slate-800 dark:text-slate-200 block mb-1">{{ item.clause.title }}:</strong> 
+                <span class="text-slate-600 dark:text-slate-400 leading-7">{{ item.clause.body }}</span>
+              {% else %}
+                <span class="text-slate-600 dark:text-slate-400 leading-7">{{ item.custom_text }}</span>
+              {% endif %}
+            </div>
+          </div>
         </li>
       {% empty %}
-        <li class="text-slate-500">—</li>
+        <li class="text-slate-500 text-center py-6 border-2 border-dashed rounded-xl">— لا توجد بنود —</li>
       {% endfor %}
     </ol>
   </div>
 
-  <!-- الجزء الثالث: التوقيعات -->
-  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-5 shadow mb-6">
-    <h2 class="font-semibold mb-6">الجزء الثالث: التوقيعات</h2>
-    <div class="grid grid-cols-2 gap-8">
-      <div class="border-t pt-6">
-        <div class="text-sm text-slate-500 mb-1">توقيع الطرف الأول (العميل)</div>
-        <div class="font-semibold">{{ agreement.client_display }}</div>
+  <!-- الجزء الثالث: التوقيعات - محسن -->
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow-lg mb-8 fade-in card-hover">
+    <div class="flex items-center mb-6">
+      <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center ml-3">
+        <span class="text-red-600 dark:text-red-300 font-bold">٣</span>
       </div>
-      <div class="border-t pt-6">
-        <div class="text-sm text-slate-500 mb-1">توقيع الطرف الثاني (الموظف)</div>
-        <div class="font-semibold">{{ agreement.employee_display }}</div>
+      <h2 class="text-xl font-bold text-slate-800 dark:text-white">الجزء الثالث: التوقيعات والإقرار</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="signature-box p-6 rounded-xl text-center">
+        <div class="text-sm text-slate-500 dark:text-slate-400 mb-4">توقيع الطرف الأول (العميل)</div>
+        <div class="font-semibold text-lg text-slate-800 dark:text-slate-200 mb-6">{{ agreement.client_display }}</div>
+        <div class="h-20 border-b-2 border-slate-300 dark:border-slate-600 mx-auto w-4/5"></div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-2">التوقيع أو الختم</div>
       </div>
+      
+      <div class="signature-box p-6 rounded-xl text-center">
+        <div class="text-sm text-slate-500 dark:text-slate-400 mb-4">توقيع الطرف الثاني (الموظف)</div>
+        <div class="font-semibold text-lg text-slate-800 dark:text-slate-200 mb-6">{{ agreement.employee_display }}</div>
+        <div class="h-20 border-b-2 border-slate-300 dark:border-slate-600 mx-auto w-4/5"></div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-2">التوقيع أو الختم</div>
+      </div>
+    </div>
+    
+    <div class="mt-8 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border text-center">
+      <p class="text-slate-600 dark:text-slate-400 text-sm">
+        أقر الطرفان بأنهما قد اطلعا على جميع بنود هذه الاتفاقية وموافقان عليها،
+        وتحت طائلة المسؤولية القانونية.
+      </p>
     </div>
   </div>
 
-  <!-- أزرار -->
-  <div class="flex flex-wrap gap-3 justify-between print:hidden">
-    <div class="flex gap-2">
+  <!-- أزرار - محسنة -->
+  <div class="flex flex-wrap gap-4 justify-between print-hidden fade-in">
+    <div class="flex gap-3">
       {% if user.is_authenticated %}
-        {% if user.is_staff or user.is_superuser %}
-          <a class="btn btn-ghost" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a>
-        {% else %}
-          {% if user.id == agreement.employee_id %}
-            <a class="btn btn-ghost" href="{% url 'agreements:finalize_clauses' agreement.pk %}">تثبيت/تعديل البنود</a>
-          {% endif %}
+        {% if user.is_staff or user.is_superuser or user.id == agreement.employee_id %}
+          <a class="btn btn-primary btn-glow flex items-center" href="{% url 'agreements:finalize_clauses' agreement.pk %}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            تثبيت/تعديل البنود
+          </a>
         {% endif %}
       {% endif %}
-      <a class="btn btn-ghost" href="{% url 'agreements:edit' agreement.pk %}">تحرير</a>
+      <a class="btn btn-secondary btn-glow flex items-center" href="{% url 'agreements:edit' agreement.pk %}">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+        تحرير الاتفاقية
+      </a>
     </div>
-    <button onclick="window.print()" class="btn btn-primary">طباعة</button>
+    
+    <div class="flex gap-3">
+      <button onclick="window.print()" class="btn btn-success btn-glow flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+        طباعة الوثيقة
+      </button>
+      
+      <a href="{% url 'marketplace:request_detail' agreement.request.id %}" class="btn btn-light btn-glow flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        العودة للطلب
+      </a>
+    </div>
   </div>
 </div>
+
+<script>
+  // تحسين تجربة الطباعة
+  document.addEventListener('DOMContentLoaded', function() {
+    // إضافة تأثيرات تفاعلية إضافية
+    const cards = document.querySelectorAll('.card-hover');
+    
+    cards.forEach(card => {
+      card.addEventListener('mouseenter', function() {
+        this.style.transition = 'all 0.3s ease';
+      });
+    });
+    
+    // تحسين الطباعة
+    const printButton = document.querySelector('button[onclick="window.print()"]');
+    if (printButton) {
+      printButton.addEventListener('click', function() {
+        // يمكن إضافة تحضيرات إضافية قبل الطباعة هنا
+        setTimeout(() => {
+          // استعادة الحالة بعد محاولة الطباعة
+        }, 1000);
+      });
+    }
+  });
+</script>
 {% endblock %}

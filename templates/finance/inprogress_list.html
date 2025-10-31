@@ -1,0 +1,87 @@
+{# finance/templates/finance/inprogress_list.html #}
+{% extends "base.html" %}
+{% block title %}طلبات قيد التنفيذ — المالية{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto p-6 rtl" dir="rtl">
+
+  <!-- الهيدر والإحصاءات -->
+  <header class="mb-6">
+    <h1 class="text-2xl font-extrabold">طلبات قيد التنفيذ (مالية)</h1>
+    <div class="grid md:grid-cols-3 gap-3 text-sm mt-3">
+      <div class="rounded-xl border p-3 bg-white/70 dark:bg-slate-800/70">
+        <div class="text-slate-500 dark:text-slate-400">إجمالي مبالغ الاتفاقيات</div>
+        <div class="font-bold">{{ total_amount|default:0|floatformat:2 }} ر.س</div>
+      </div>
+      <div class="rounded-xl border p-3 bg-white/70 dark:bg-slate-800/70">
+        <div class="text-slate-500 dark:text-slate-400">غير محصّل (جميع الطلبات)</div>
+        <div class="font-bold text-amber-600">{{ unpaid_total|default:0|floatformat:2 }} ر.س</div>
+      </div>
+      <div class="rounded-xl border p-3 bg-white/70 dark:bg-slate-800/70">
+        <div class="text-slate-500 dark:text-slate-400">عدد الطلبات</div>
+        <div class="font-bold">{{ total_reqs|default:0 }}</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- قائمة الطلبات -->
+  <div class="grid gap-4">
+    {% for r in requests %}
+      <article class="rounded-2xl border bg-white dark:bg-slate-800 p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex flex-wrap justify-between items-start gap-4">
+
+          <!-- معلومات أساسية -->
+          <div class="min-w-[240px]">
+            <div class="text-sm text-slate-500 dark:text-slate-400">طلب رقم</div>
+            <div class="font-bold">
+              <a class="underline hover:no-underline" href="{% url 'marketplace:request_detail' r.id %}">#{{ r.id }}</a>
+              — {{ r.title|default:"—" }}
+            </div>
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              آخر تحديث: {{ r.updated_at|date:"Y-m-d H:i" }}
+            </div>
+          </div>
+
+          <!-- الأطراف -->
+          <div class="text-sm">
+            <div>العميل: <strong>{{ r.client }}</strong></div>
+            <div>الموظف: <strong>{{ r.assigned_employee|default:"—" }}</strong></div>
+          </div>
+
+          <!-- بيانات الاتفاقية إن وجدت -->
+          <div class="text-sm">
+            {% if r.agreement %}
+              <div>الاتفاقية: <strong>#{{ r.agreement.id }}</strong></div>
+              <div>المبلغ المتفق عليه: <strong>{{ r.agreement.total_amount|default:0|floatformat:2 }}</strong> ر.س</div>
+              <div>مدة التنفيذ: <strong>{{ r.agreement.duration_days|default:0 }}</strong> يوم</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">
+                دفعات محددة: {{ r.agreement.milestones.count|default:0 }}
+              </div>
+            {% else %}
+              <div class="text-slate-500">لا توجد اتفاقية</div>
+            {% endif %}
+          </div>
+
+          <!-- إجراءات -->
+          <div class="flex items-center gap-2">
+            {% if r.agreement %}
+              <a class="btn btn-primary" href="{% url 'finance:agreement_invoices' r.agreement.id %}">
+                فواتير الاتفاقية
+              </a>
+              <a class="btn btn-ghost" href="{% url 'agreements:detail' r.agreement.id %}">
+                عرض الاتفاقية
+              </a>
+            {% else %}
+              <span class="text-slate-500">—</span>
+            {% endif %}
+          </div>
+
+        </div>
+      </article>
+    {% empty %}
+      <div class="text-slate-500">لا توجد طلبات حالياً في مرحلة التنفيذ.</div>
+    {% endfor %}
+  </div>
+
+</section>
+{% endblock %}

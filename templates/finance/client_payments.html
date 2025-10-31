@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}مدفوعاتي{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .btn-glow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-glow:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+  }
+  
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .status-unpaid {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fbbf24;
+  }
+  
+  .status-paid {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #10b981;
+  }
+  
+  .table-row {
+    transition: all 0.2s ease;
+  }
+  
+  .table-row:hover {
+    background-color: #f8fafc;
+  }
+  
+  .dark .table-row:hover {
+    background-color: #1e293b;
+  }
+  
+  .amount-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+  }
+  
+  .filter-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  }
+  
+  .dark .filter-card {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="max-w-7xl mx-auto rtl px-4 py-8" dir="rtl">
+  <!-- الهيدر الرئيسي -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-4 fade-in">
+    <div class="flex items-center">
+      <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center ml-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">مدفوعاتي</h1>
+        <p class="text-slate-600 dark:text-slate-300 mt-1">إدارة ومتابعة جميع الفواتير والمدفوعات</p>
+      </div>
+    </div>
+    
+    <!-- نموذج التصفية -->
+    <form method="get" class="flex flex-wrap gap-4 items-end bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg filter-card">
+      <div class="space-y-1">
+        <label class="text-xs text-slate-500 dark:text-slate-400 font-medium">حالة الدفع</label>
+        <select name="status" class="input w-32">
+          <option value="" {% if not status_q %}selected{% endif %}>جميع الحالات</option>
+          <option value="unpaid" {% if status_q == 'unpaid' %}selected{% endif %}>غير مدفوعة</option>
+          <option value="paid" {% if status_q == 'paid' %}selected{% endif %}>مدفوعة</option>
+        </select>
+      </div>
+      
+      <div class="space-y-1">
+        <label class="text-xs text-slate-500 dark:text-slate-400 font-medium">بحث</label>
+        <input class="input w-48" type="text" name="q" value="{{ q }}" placeholder="رقم الطلب/الاتفاقية/المرجع">
+      </div>
+      
+      <div class="space-y-1">
+        <label class="text-xs text-slate-500 dark:text-slate-400 font-medium">من تاريخ</label>
+        <input class="input w-36" type="date" name="from" value="{{ date_from }}">
+      </div>
+      
+      <div class="space-y-1">
+        <label class="text-xs text-slate-500 dark:text-slate-400 font-medium">إلى تاريخ</label>
+        <input class="input w-36" type="date" name="to" value="{{ date_to }}">
+      </div>
+      
+      <button class="btn btn-primary btn-glow flex items-center text-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+        </svg>
+        تطبيق التصفية
+      </button>
+    </form>
+  </div>
+
+  <!-- بطاقات الإحصائيات -->
+  <div class="grid md:grid-cols-3 gap-6 mb-8 fade-in">
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg card-hover border-l-4 border-blue-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">إجمالي المدفوعات</p>
+          <p class="text-2xl font-bold text-slate-800 dark:text-slate-200 mt-1">{{ totals.total|default:0|floatformat:2 }} ر.س</p>
+        </div>
+        <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+          </svg>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg card-hover border-l-4 border-amber-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">المستحقات</p>
+          <p class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">{{ totals.unpaid|default:0|floatformat:2 }} ر.س</p>
+        </div>
+        <div class="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-600 dark:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg card-hover border-l-4 border-emerald-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">المدفوعة</p>
+          <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{{ totals.paid|default:0|floatformat:2 }} ر.س</p>
+        </div>
+        <div class="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-600 dark:text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- جدول الفواتير -->
+  <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden fade-in">
+    <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">قائمة الفواتير</h2>
+        <span class="text-sm text-slate-500 dark:text-slate-400">
+          عرض {{ invoices|length }} فاتورة
+        </span>
+      </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-700/50">
+          <tr class="text-right">
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">#</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">الاتفاقية والطلب</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">الدفعة</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">المبلغ</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">الحالة</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">تاريخ الإصدار</th>
+            <th class="p-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">المرجع</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+          {% for inv in invoices %}
+            <tr class="table-row hover:bg-slate-50 dark:hover:bg-slate-700/30">
+              <td class="p-4 font-mono text-slate-600 dark:text-slate-400 text-xs">#{{ inv.id }}</td>
+              <td class="p-4">
+                <div class="space-y-1">
+                  <a class="font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center" href="{% url 'agreements:detail' inv.agreement.id %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    اتفاقية #{{ inv.agreement.id }}
+                  </a>
+                  <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    طلب #{{ inv.agreement.request.id }}
+                  </div>
+                </div>
+              </td>
+              <td class="p-4 text-slate-700 dark:text-slate-300">
+                {% if inv.milestone %}
+                  <span class="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs">{{ inv.milestone.title }}</span>
+                {% else %}
+                  <span class="text-slate-400">—</span>
+                {% endif %}
+              </td>
+              <td class="p-4 amount-cell text-slate-800 dark:text-slate-200 font-semibold">
+                {{ inv.amount|floatformat:2 }} ر.س
+              </td>
+              <td class="p-4">
+                {% if inv.status == 'paid' %}
+                  <span class="status-badge status-paid">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {{ inv.get_status_display }}
+                  </span>
+                {% else %}
+                  <span class="status-badge status-unpaid">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {{ inv.get_status_display }}
+                  </span>
+                {% endif %}
+              </td>
+              <td class="p-4 text-slate-600 dark:text-slate-400">
+                {{ inv.issued_at|date:"Y-m-d" }}
+              </td>
+              <td class="p-4">
+                {% if inv.ref_code %}
+                  <code class="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs font-mono">{{ inv.ref_code }}</code>
+                {% else %}
+                  <span class="text-slate-400">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="p-8 text-center text-slate-500 dark:text-slate-400">
+                <div class="flex flex-col items-center justify-center py-8">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-slate-300 dark:text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p class="text-lg font-medium text-slate-400 dark:text-slate-500">لا توجد فواتير مطابقة</p>
+                  <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">جرب تعديل معايير البحث أو التصفية</p>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // تحديث تنسيق التواريخ إذا لزم الأمر
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => {
+      input.className = 'input w-36 ' + (input.className || '');
+    });
+    
+    // إضافة تأثيرات تفاعلية إضافية
+    const tableRows = document.querySelectorAll('.table-row');
+    tableRows.forEach(row => {
+      row.addEventListener('click', function() {
+        const link = this.querySelector('a');
+        if (link) {
+          link.click();
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

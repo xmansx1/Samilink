@@ -1,85 +1,124 @@
 # agreements/urls.py
 from __future__ import annotations
 
+import inspect
+from typing import Callable
 from django.urls import path
 from . import views
 
 app_name = "agreements"
 
-# ============================================
-# ملاحظات توافق:
-# - الدوال في views التالية تستخدم الوسيط pk:
-#     open_by_request(request, pk)
-#     accept_by_request(request, pk)
-#     reject_by_request(request, pk)
-#     detail(request, pk)
-#     finalize_clauses(request, pk)
-#     edit(request, pk)            # إن كانت موجودة لديك
-#
-# - لضمان التوافق مع مسارات قديمة تستخدم request_id / agreement_id
-#   قمنا بإنشاء "مُحَوِّلات" بسيطة تمُرِّر pk لِـ views.
-# ============================================
+# =========================================================
+# Helpers: توافق ديناميكي مع توقيعات الدوال في views.py
+# =========================================================
+def _call_with_pk_or_agreement_id(view_func: Callable, request, pk: int, **kwargs):
+    """
+    يستدعي الدالة المعطاة بتمرير المعامل الصحيح:
+    - إن كانت الدالة تقبل 'agreement_id' نمرّر agreement_id=pk
+    - إن كانت تقبل 'pk' نمرّر pk=pk
+    - وإلا نحاول الاستدعاء المباشر ونترك Django يتعامل مع الخطأ (للكشف المبكّر)
+    """
+    try:
+        params = inspect.signature(view_func).parameters
+    except (ValueError, TypeError):
+        # fallback بسيط في حال دالّة ملفوفة بديكوريتر يغيّب التوقيع
+        try:
+            return view_func(request, agreement_id=pk, **kwargs)
+        except TypeError:
+            return view_func(request, pk=pk, **kwargs)
 
-# ---- محولات أسماء المعاملات (Aliases) ----
-def _open_by_request_alias(request, request_id: int, **kwargs):
-    # يحوّل request_id -> pk
-    return views.open_by_request(request, pk=request_id)
+    if "agreement_id" in params:
+        return view_func(request, agreement_id=pk, **kwargs)
+    if "pk" in params:
+        return view_func(request, pk=pk, **kwargs)
+    # آخر حل: جرّب agreement_id ثم pk
+    try:
+        return view_func(request, agreement_id=pk, **kwargs)
+    except TypeError:
+        return view_func(request, pk=pk, **kwargs)
 
-def _accept_by_request_alias(request, request_id: int, **kwargs):
-    return views.accept_by_request(request, pk=request_id)
 
-def _reject_by_request_alias(request, request_id: int, **kwargs):
-    return views.reject_by_request(request, pk=request_id)
+def _detail_pk(request, pk: int, **kwargs):
+    return _call_with_pk_or_agreement_id(getattr(views, "detail"), request, pk, **kwargs)
 
-def _detail_alias(request, agreement_id: int, **kwargs):
-    return views.detail(request, pk=agreement_id)
 
-def _edit_alias(request, agreement_id: int, **kwargs):
-    # استخدم هذا فقط إذا كانت لديك views.edit
-    return views.edit(request, pk=agreement_id)
+def _edit_pk(request, pk: int, **kwargs):
+    return _call_with_pk_or_agreement_id(getattr(views, "edit"), request, pk, **kwargs)
 
-def _finalize_alias(request, pk: int, **kwargs):
-    # مجرد تمرير مباشر (اسم موحّد أساسًا)
-    return views.finalize_clauses(request, pk=pk)
+
+def _finalize_pk(request, pk: int, **kwargs):
+    # قد تكون الدالة باسم finalize_clauses أو finalize
+    fn = getattr(views, "finalize_clauses", None) or getattr(views, "finalize", None)
+    return _call_with_pk_or_agreement_id(fn, request, pk, **kwargs)
+
+
+# Aliases: تحويل pk → request_id لمسارات by-request المتوافقة مع قوالب قديمة
+def _open_by_request_alias_pk(request, pk: int, **kwargs):
+    return views.open_by_request(request, request_id=pk, **kwargs)
+
+
+def _accept_by_request_alias_pk(request, pk: int, **kwargs):
+    return views.accept_by_request(request, request_id=pk, **kwargs)
+
+
+def _reject_by_request_alias_pk(request, pk: int, **kwargs):
+    return views.reject_by_request(request, request_id=pk, **kwargs)
 
 
 urlpatterns = [
-    # ======================
-    # المسارات "القياسية" الحديثة (أسماء وسيط موحّدة: pk)
-    # ======================
+    # =====================================================
+    # المسارات القياسية (المعتمدة)
+    # =====================================================
 
-    # إنشاء/فتح اتفاقية بناءً على رقم الطلب
-    path("open/by-request/<int:pk>/", views.open_by_request, name="open_by_request"),
-
-    # قبول/رفض من جهة الطلب (للعميل)
-    path("accept/by-request/<int:pk>/", views.accept_by_request, name="accept_by_request"),
-    path("reject/by-request/<int:pk>/", views.reject_by_request, name="reject_by_request"),
-
-    # تفاصيل/تعديل الاتفاقية مباشرة بواسطة رقم الاتفاقية
+    # فتح/إنشاء اتفاقية انطلاقًا من الطلب (يتوقع request_id)
+    path("open/by-request/<int:request_id>/", views.open_by_request, name="open_by_request"),
+    path("milestone/<int:milestone_id>/deliver/", views.milestone_deliver, name="milestone_deliver"),
+    path("milestone/<int:milestone_id>/approve/", views.milestone_approve, name="milestone_approve"),
+    path("milestone/<int:milestone_id>/reject/", views.milestone_reject, name="milestone_reject"),
     path("<int:pk>/", views.detail, name="detail"),
-
-    # ملاحظة: وفّرنا edit إن كانت لديك دالة views.edit
     path("<int:pk>/edit/", views.edit, name="edit"),
+    path("<int:pk>/clauses/", views.finalize_clauses, name="finalize_clauses"),
 
-    # تثبيت البنود لاتفاقية (اختيار بنود الأدمن + تخصيص)
-    path("<int:pk>/finalize-clauses/", views.finalize_clauses, name="finalize_clauses"),
-
-    # ======================
-    # توافق عكسي (Legacy Aliases) لمنع NoReverseMatch
-    # هذه تُحوِّل request_id / agreement_id إلى pk داخليًا
-    # ======================
-
-    # كانت سابقًا: open-by-request/<int:request_id>/
-    path("open-by-request/<int:request_id>/", _open_by_request_alias, name="open_by_request_legacy"),
-
-    # كانت سابقًا: accept-by-request/<int:request_id>/ و reject-by-request/<int:request_id>/
-    path("accept-by-request/<int:request_id>/", _accept_by_request_alias, name="accept_by_request_legacy"),
-    path("reject-by-request/<int:request_id>/", _reject_by_request_alias, name="reject_by_request_legacy"),
-
-    # كانت سابقًا: <int:agreement_id>/ و <int:agreement_id>/edit/
-    path("<int:agreement_id>/legacy/", _detail_alias, name="detail_legacy"),
-    path("<int:agreement_id>/edit/legacy/", _edit_alias, name="edit_legacy"),
-
-    # في نسخ سابقة استخدمت نفس الاسم finalize-clauses مع pk مباشر — أبقيناه أعلاه
-    # ولو كان لديك مسار قديم مختلف؛ أضف Alias إضافي هنا يحوّل للاسم الجديد.
+    # موافقة/رفض العميل على اتفاقية الطلب (يتوقع request_id)
+    path("accept/by-request/<int:request_id>/", views.accept_by_request, name="accept_by_request"),
+    path("reject/by-request/<int:request_id>/", views.reject_by_request, name="reject_by_request"),
 ]
+
+# =========================================================
+# مسارات عرض/تحرير/تثبيت الاتفاقية حسب المعرّف
+# تدعم الدوال التي تستقبل pk أو agreement_id تلقائيًا
+# =========================================================
+if hasattr(views, "detail"):
+    urlpatterns.append(path("<int:pk>/", _detail_pk, name="detail"))
+
+if hasattr(views, "edit"):
+    urlpatterns.append(path("<int:pk>/edit/", _edit_pk, name="edit"))
+
+if hasattr(views, "finalize_clauses") or hasattr(views, "finalize"):
+    urlpatterns.append(path("<int:pk>/finalize-clauses/", _finalize_pk, name="finalize_clauses"))
+
+# =====================================================
+# Aliases للتوافق العكسي مع قوالب قديمة (اختياري)
+# (كانت تمرّر pk بدل request_id لمسارات by-request)
+# =====================================================
+urlpatterns += [
+    path("open/by-request/pk/<int:pk>/", _open_by_request_alias_pk, name="open_by_request_pk"),
+    path("accept/by-request/pk/<int:pk>/", _accept_by_request_alias_pk, name="accept_by_request_pk"),
+    path("reject/by-request/pk/<int:pk>/", _reject_by_request_alias_pk, name="reject_by_request_pk"),
+]
+
+# =========================================================
+# إجراءات الدفعات/المراحل (Milestones) — تُضاف فقط إذا وُجدت
+# =========================================================
+if hasattr(views, "milestone_deliver"):
+    urlpatterns.append(
+        path("milestone/<int:milestone_id>/deliver/", views.milestone_deliver, name="milestone_deliver")
+    )
+if hasattr(views, "milestone_approve"):
+    urlpatterns.append(
+        path("milestone/<int:milestone_id>/approve/", views.milestone_approve, name="milestone_approve")
+    )
+if hasattr(views, "milestone_reject"):
+    urlpatterns.append(
+        path("milestone/<int:milestone_id>/reject/", views.milestone_reject, name="milestone_reject")
+    )

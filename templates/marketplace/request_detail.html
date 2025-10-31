@@ -1,83 +1,154 @@
+{# marketplace/templates/marketplace/request_detail.html #}
 {% extends "base.html" %}
 {% block title %}طلب #{{ req.pk }}{% endblock %}
 {% block content %}
 <section class="py-8 max-w-6xl mx-auto rtl" dir="rtl">
 
-  <div class="rounded-2xl border bg-white/80 backdrop-blur shadow-glass-lg overflow-hidden">
+  <div class="rounded-2xl border bg-white/80 dark:bg-slate-800/70 backdrop-blur shadow-glass-lg overflow-hidden">
 
-    <!-- ===== Header ===== -->
-    <div class="p-6 border-b bg-gradient-to-l from-indigo-50 to-sky-50">
+    {# ===== Toasts: رسائل النظام (Django messages) ===== #}
+    {% if messages %}
+    <div class="p-4 border-b bg-gradient-to-l from-emerald-50 to-sky-50 dark:from-slate-800 dark:to-slate-900">
+      <div class="space-y-2" id="messages-area">
+        {% for message in messages %}
+          <div class="rounded-xl border px-4 py-3 text-sm flex items-start gap-2
+                      {% if message.tags == 'success' %} bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-900 dark:text-emerald-200
+                      {% elif message.tags == 'warning' %} bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-900 dark:text-amber-200
+                      {% elif message.tags == 'error' %} bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/20 dark:border-rose-200
+                      {% else %} bg-slate-50 border-slate-200 text-slate-800 dark:bg-slate-900/30 dark:border-slate-800 dark:text-slate-200 {% endif %}">
+            <div class="mt-0.5">•</div>
+            <div class="whitespace-pre-line">{{ message }}</div>
+            <button type="button" class="ms-auto text-xs text-slate-500 hover:underline" data-close-alert>إغلاق</button>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ===== Header ===== #}
+    <div class="p-6 border-b bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-slate-800 dark:to-slate-900">
       <div class="flex items-start justify-between gap-6">
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <!-- إبراز العنوان -->
-            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
-              {{ req.title }}
-            </h1>
-            <span class="px-2 py-1 rounded-lg text-xs border bg-white text-slate-700">#{{ req.pk }}</span>
-            <span class="px-2 py-1 rounded-lg text-xs border bg-white text-slate-700">
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white truncate">{{ req.title }}</h1>
+            <span class="px-2 py-1 rounded-lg text-xs border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">#{{ req.pk }}</span>
+            <span class="px-2 py-1 rounded-lg text-xs border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
               {{ req.get_status_display|default:req.status }}
             </span>
             {% if req.agreement_overdue %}
               <span class="px-2 py-1 rounded-lg text-xs bg-red-50 text-red-700 border border-red-200">تجاوزت مهلة إرسال الاتفاقية</span>
             {% endif %}
           </div>
-          <p class="text-slate-600 text-sm mt-2">
+          <p class="text-slate-600 dark:text-slate-300 text-sm mt-2">
             العميل: <b>{{ req.client }}</b>
             {% if req.assigned_employee %} — الموظف: <b>{{ req.assigned_employee }}</b>{% endif %}
           </p>
         </div>
-        <div class="text-slate-500 text-sm shrink-0">
+        <div class="text-slate-500 dark:text-slate-400 text-sm shrink-0">
           آخر تحديث: {{ req.updated_at|date:"Y-m-d H:i" }}
         </div>
       </div>
+
+      {# ===== شريط إجراءات عام (فتح نزاع + تغيير الحالة) ===== #}
+      {% if request.user.is_authenticated %}
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+
+          {# زر فتح نزاع: العميل أو الموظف المُسنَد أو المدير/ستاف #}
+          {% if request.user.id == req.client_id or request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
+            <a href="{% url 'disputes:open' req.pk %}" class="btn btn-danger">فتح نزاع</a>
+          {% endif %}
+
+          {# تغيير حالة الطلب: الموظف المُسنَد أو المدير/ستاف #}
+          {% if request.user.is_staff or request.user.role == 'admin' %}
+            <div class="rounded-xl border bg-white/70 dark:bg-slate-900/40 p-2 flex flex-wrap items-center gap-2">
+              <span class="text-xs text-slate-600 dark:text-slate-300">تغيير الحالة:</span>
+              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
+                    onsubmit="return confirm('سيتم تعليم الطلب كـ «بانتظار المراجعة». متابعة؟');">
+                {% csrf_token %}
+                <input type="hidden" name="state" value="awaiting_review">
+                <button class="btn btn-secondary btn-xs">بانتظار المراجعة</button>
+              </form>
+              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
+                    onsubmit="return confirm('إرجاع الطلب إلى «قيد التنفيذ»؟');">
+                {% csrf_token %}
+                <input type="hidden" name="state" value="in_progress">
+                <button class="btn btn-secondary btn-xs">قيد التنفيذ</button>
+              </form>
+              {% if req.status == 'awaiting_payment' or req.state == 'awaiting_payment' %}
+              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
+                    onsubmit="return confirm('تعليم الطلب «مكتمل»؟');">
+                {% csrf_token %}
+                <input type="hidden" name="state" value="completed">
+                <button class="btn btn-success btn-xs">مكتمل</button>
+              </form>
+              {% endif %}
+              <form method="post" action="{% url 'marketplace:request_cancel' req.pk %}" class="inline flex items-center gap-2"
+                    onsubmit="return !!this.querySelector('[name=reason]').value || (alert('فضلاً أدخل سبب الإلغاء.'), false)">
+                {% csrf_token %}
+                <input type="text" name="reason" class="input !py-1 !text-xs" placeholder="سبب الإلغاء" required>
+                <button class="btn btn-danger btn-xs">إلغاء</button>
+              </form>
+            </div>
+          {% elif request.user.id == req.assigned_employee_id %}
+            <div class="rounded-xl border bg-white/70 dark:bg-slate-900/40 p-2 flex flex-wrap items-center gap-2">
+              <span class="text-xs text-slate-600 dark:text-slate-300">تغيير الحالة:</span>
+              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
+                    onsubmit="return confirm('سيتم تعليم الطلب كـ «بانتظار المراجعة». متابعة؟');">
+                {% csrf_token %}
+                <input type="hidden" name="state" value="awaiting_review">
+                <button class="btn btn-secondary btn-xs">بانتظار المراجعة</button>
+              </form>
+              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
+                    onsubmit="return confirm('إرجاع الطلب إلى «قيد التنفيذ»؟');">
+                {% csrf_token %}
+                <input type="hidden" name="state" value="in_progress">
+                <button class="btn btn-secondary btn-xs">قيد التنفيذ</button>
+              </form>
+            </div>
+          {% endif %}
+
+        </div>
+      {% endif %}
+
     </div>
 
     <div class="p-6 space-y-6">
 
-      <!-- ===== لوحة تحكم المدير العام (admin-only) ===== -->
-      {% if request.user.is_authenticated %}
-        {% if request.user.role == "admin" or request.user.is_staff %}
-        <div class="rounded-xl border bg-amber-50 p-4">
+      {# ===== لوحة تحكم المدير العام (admin-only) ===== #}
+      {% if request.user.is_authenticated and request.user.role == 'admin' or request.user.is_authenticated and request.user.is_staff %}
+        <div class="rounded-xl border bg-amber-50 dark:bg-amber-900/20 p-4">
           <div class="flex items-center justify-between gap-3">
-            <div class="text-slate-800 font-semibold">لوحة تحكم المدير العام</div>
+            <div class="text-slate-800 dark:text-amber-200 font-semibold">لوحة تحكم المدير العام</div>
           </div>
           <div class="mt-3 flex flex-wrap items-center gap-2">
-
-            <!-- إرجاع كجديد -->
             <form method="post" action="{% url 'marketplace:admin_request_reset_to_new' req.pk %}"
                   onsubmit="return confirm('سيُعاد الطلب كجديد: سيتم إزالة الإسناد ورفض العروض الحالية للأرشفة. تأكيد؟');">
               {% csrf_token %}
-              <button class="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50">إرجاع كجديد</button>
+              <button class="px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800">إرجاع كجديد</button>
             </form>
 
-            <!-- إعادة إسناد لموظف آخر -->
-            <a class="px-3 py-2 rounded-lg border bg-white hover:bg-slate-50"
+            <a class="px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800"
                href="{% url 'marketplace:admin_request_reassign' req.pk %}">
               إعادة إسناد لموظف آخر
             </a>
 
-            <!-- شطب نهائي -->
             <form method="post" action="{% url 'marketplace:admin_request_delete' req.pk %}"
                   onsubmit="return confirm('سيتم شطب الطلب نهائيًا ولا يمكن التراجع. تأكيد؟');">
               {% csrf_token %}
               <button class="px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700">شطب نهائي</button>
             </form>
-
           </div>
-          <p class="text-xs text-slate-600 mt-2">هذه الإجراءات متاحة للمدير العام فقط.</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 mt-2">هذه الإجراءات متاحة للمدير العام فقط.</p>
         </div>
-        {% endif %}
       {% endif %}
 
-      <!-- 🟦 تقديم عرض (تنبيه: عرض واحد فقط) -->
+      {# 🟦 تقديم عرض (موظف لم يقدّم عرضًا بعد) #}
       {% if can_offer %}
-      <div class="rounded-xl border bg-indigo-50 p-4">
+      <div class="rounded-xl border bg-indigo-50 dark:bg-indigo-900/20 p-4">
         <div class="flex items-center justify-between gap-3">
-          <div class="text-slate-700 text-sm">
+          <div class="text-slate-700 dark:text-slate-200 text-sm">
             يمكنك تقديم <b>عرض واحد فقط</b> لهذا الطلب. حالة الطلب الحالية: جديد.
           </div>
-          <!-- استخدمنا المسار المُحدّث: offer_create_cbv -->
           <a class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
              href="{% url 'marketplace:offer_create_cbv' req.pk %}">
             تقديم عرض
@@ -85,52 +156,48 @@
         </div>
       </div>
       {% elif my_offer %}
-      <div class="rounded-xl border bg-slate-50 p-4">
+      <div class="rounded-xl border bg-slate-50 dark:bg-slate-900/40 p-4">
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
-            <div class="text-slate-900 font-bold truncate">عرضك المقدم</div>
-            <div class="text-slate-500 text-sm truncate">
+            <div class="text-slate-900 dark:text-white font-bold truncate">عرضك المقدم</div>
+            <div class="text-slate-500 dark:text-slate-400 text-sm truncate">
               الحالة: {{ my_offer.get_status_display|default:my_offer.status }} — المدة: {{ my_offer.proposed_duration_days }} — المبلغ: {{ my_offer.proposed_price }}
             </div>
           </div>
-          <span class="px-2 py-1 rounded-lg text-xs border bg-white text-slate-700">قدّمت عرضًا بالفعل</span>
+          <span class="px-2 py-1 rounded-lg text-xs border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">قدّمت عرضًا بالفعل</span>
         </div>
       </div>
       {% endif %}
 
-      <!-- بطاقات معلومات سريعة: تمييز قيم العميل -->
+      {# بطاقات معلومات سريعة #}
       <div class="grid sm:grid-cols-2 gap-4">
 
-        <!-- بطاقة المدة/المبلغ (نُبرز قيمة العميل أولاً) -->
-        <div class="p-4 rounded-xl border bg-white">
-          <div class="text-slate-500 text-sm mb-2">المدة/المبلغ</div>
-
+        {# المدة/المبلغ #}
+        <div class="p-4 rounded-xl border bg-white dark:bg-slate-800">
+          <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">المدة/المبلغ</div>
           <div class="grid grid-cols-1 gap-3">
-            <!-- قيم العميل المبدئية -->
-            <div class="rounded-lg border border-sky-200 bg-sky-50 p-3">
-              <div class="text-xs text-sky-700 mb-1">مقدّمة من العميل</div>
-              <div class="flex items-center gap-4 text-slate-800">
+            <div class="rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-900/20 p-3">
+              <div class="text-xs text-sky-700 dark:text-sky-300 mb-1">مقدّمة من العميل</div>
+              <div class="flex items-center gap-4 text-slate-800 dark:text-slate-100">
                 <div>المدة: <b>{{ req.estimated_duration_days|default:"—" }}</b> يوم</div>
                 <div>المبلغ: <b>{{ req.estimated_price|default:"—" }}</b> <span class="text-xs text-slate-500">ريال</span></div>
               </div>
             </div>
 
-            <!-- إن كان هناك عرض مختار -->
             {% if req.selected_offer %}
-            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <div class="text-xs text-amber-800 mb-1">العرض المختار</div>
-              <div class="flex items-center gap-4 text-slate-800">
+            <div class="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-3">
+              <div class="text-xs text-amber-800 dark:text-amber-200 mb-1">العرض المختار</div>
+              <div class="flex items-center gap-4 text-slate-800 dark:text-slate-100">
                 <div>المدة: <b>{{ req.selected_offer.proposed_duration_days }}</b> يوم</div>
                 <div>المبلغ: <b>{{ req.selected_offer.proposed_price }}</b> <span class="text-xs text-slate-500">ريال</span></div>
               </div>
             </div>
             {% endif %}
 
-            <!-- إن وُجدت اتفاقية -->
             {% if req.agreement %}
-            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-              <div class="text-xs text-emerald-800 mb-1">الاتفاقية</div>
-              <div class="flex items-center gap-4 text-slate-800">
+            <div class="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-900/20 p-3">
+              <div class="text-xs text-emerald-800 dark:text-emerald-200 mb-1">الاتفاقية</div>
+              <div class="flex items-center gap-4 text-slate-800 dark:text-slate-100">
                 <div>المدة: <b>{{ req.agreement.duration_days }}</b> يوم</div>
                 <div>المبلغ: <b>{{ req.agreement.total_amount }}</b> <span class="text-xs text-slate-500">ريال</span></div>
               </div>
@@ -139,10 +206,10 @@
           </div>
         </div>
 
-        <!-- الموظف المسند -->
-        <div class="rounded-xl border p-4 bg-slate-50">
-          <div class="font-bold text-slate-800 mb-1">الموظف المسند</div>
-          <div class="text-slate-700">
+        {# الموظف المسند #}
+        <div class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
+          <div class="font-bold text-slate-800 dark:text-white mb-1">الموظف المسند</div>
+          <div class="text-slate-700 dark:text-slate-200">
             {% if req.assigned_employee %}
               {{ req.assigned_employee }}
             {% elif req.selected_offer %}
@@ -154,51 +221,47 @@
         </div>
       </div>
 
-      <!-- تفاصيل الطلب (كما كتبها العميل بالأسطر) -->
-      <div class="rounded-xl border bg-white p-4">
-        <div class="text-slate-500 text-sm mb-2">التفاصيل</div>
-        <div class="prose prose-slate max-w-none whitespace-pre-line text-slate-800">
+      {# تفاصيل الطلب #}
+      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
+        <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">التفاصيل</div>
+        <div class="prose prose-slate dark:prose-invert max-w-none whitespace-pre-line text-slate-800 dark:text-slate-100">
           {{ req.details|default:"—"|urlize|linebreaksbr }}
         </div>
       </div>
 
-      <!-- الروابط -->
       {% if req.links %}
-      <div class="rounded-xl border bg-white p-4">
-        <div class="text-slate-500 text-sm mb-2">روابط مرتبطة</div>
-        <div class="whitespace-pre-line text-slate-800">{{ req.links|urlize|linebreaksbr }}</div>
+      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
+        <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">روابط مرتبطة</div>
+        <div class="whitespace-pre-line text-slate-800 dark:text-slate-100">
+          {{ req.links|urlize|linebreaksbr }}
+        </div>
       </div>
       {% endif %}
 
-      <!-- ===================== بيانات التواصل (تظهر فقط بعد قبول العرض) ===================== -->
+      {# ===== بيانات التواصل (بعد اختيار عرض) ===== #}
       {% if req.status != 'new' %}
-      <div class="rounded-2xl border bg-white p-4">
+      <div class="rounded-2xl border bg-white dark:bg-slate-800 p-4">
         <div class="flex items-center justify-between mb-4">
-          <div class="text-slate-800 font-bold">بيانات التواصل</div>
-          <div class="text-xs text-slate-500">تظهر بعد اختيار عرض من العميل</div>
+          <div class="text-slate-800 dark:text-white font-bold">بيانات التواصل</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400">تظهر بعد اختيار عرض من العميل</div>
         </div>
 
         <div class="grid md:grid-cols-2 gap-4">
-
-          <!-- بطاقة العميل -->
-          <div class="rounded-xl border p-4 bg-slate-50">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="i-lucide:user"></span>
-              <div class="font-semibold text-slate-800">العميل</div>
-            </div>
-            <div class="space-y-2 text-slate-700">
+          <div class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
+            <div class="font-semibold text-slate-800 dark:text-white mb-2">العميل</div>
+            <div class="space-y-2 text-slate-700 dark:text-slate-200">
               <div>الاسم: <b>{{ req.client }}</b></div>
               {% if req.client.phone %}
               <div class="flex items-center gap-2">
                 <span>الجوال:</span>
-                <a class="text-indigo-700 hover:underline" dir="ltr" href="tel:{{ req.client.phone }}">{{ req.client.phone }}</a>
-                <a class="text-emerald-700 hover:underline" target="_blank" rel="noopener"
+                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" dir="ltr" href="tel:{{ req.client.phone }}">{{ req.client.phone }}</a>
+                <a class="text-emerald-700 dark:text-emerald-300 hover:underline" target="_blank" rel="noopener noreferrer"
                    href="https://api.whatsapp.com/send?phone={{ req.client.phone|urlencode }}">واتساب</a>
               </div>
               {% endif %}
               {% if req.client.email %}
               <div>الإيميل:
-                <a class="text-indigo-700 hover:underline" href="mailto:{% filter force_escape %}{{ req.client.email }}{% endfilter %}">
+                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" href="mailto:{{ req.client.email|urlencode }}">
                   {{ req.client.email }}
                 </a>
               </div>
@@ -206,44 +269,41 @@
             </div>
           </div>
 
-          <!-- بطاقة الموظف المسند -->
           {% if req.assigned_employee or req.selected_offer %}
-          <div class="rounded-xl border p-4 bg-slate-50">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="i-lucide:badge-check"></span>
-              <div class="font-semibold text-slate-800">الموظف المسند</div>
-            </div>
-            <div class="space-y-2 text-slate-700">
+          <div class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
+            <div class="font-semibold text-slate-800 dark:text-white mb-2">الموظف المسند</div>
+            <div class="space-y-2 text-slate-700 dark:text-slate-200">
               <div>الاسم:
                 <b>
                   {% if req.assigned_employee %}{{ req.assigned_employee }}{% else %}{{ req.selected_offer.employee }}{% endif %}
                 </b>
               </div>
+
               {% if req.assigned_employee and req.assigned_employee.phone %}
               <div class="flex items-center gap-2">
                 <span>الجوال:</span>
-                <a class="text-indigo-700 hover:underline" dir="ltr" href="tel:{{ req.assigned_employee.phone }}">{{ req.assigned_employee.phone }}</a>
-                <a class="text-emerald-700 hover:underline" target="_blank" rel="noopener"
+                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" dir="ltr" href="tel:{{ req.assigned_employee.phone }}">{{ req.assigned_employee.phone }}</a>
+                <a class="text-emerald-700 dark:text-emerald-300 hover:underline" target="_blank" rel="noopener noreferrer"
                    href="https://api.whatsapp.com/send?phone={{ req.assigned_employee.phone|urlencode }}">واتساب</a>
               </div>
               {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.phone %}
               <div class="flex items-center gap-2">
                 <span>الجوال:</span>
-                <a class="text-indigo-700 hover:underline" dir="ltr" href="tel:{{ req.selected_offer.employee.phone }}">{{ req.selected_offer.employee.phone }}</a>
-                <a class="text-emerald-700 hover:underline" target="_blank" rel="noopener"
+                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" dir="ltr" href="tel:{{ req.selected_offer.employee.phone }}">{{ req.selected_offer.employee.phone }}</a>
+                <a class="text-emerald-700 dark:text-emerald-300 hover:underline" target="_blank" rel="noopener noreferrer"
                    href="https://api.whatsapp.com/send?phone={{ req.selected_offer.employee.phone|urlencode }}">واتساب</a>
               </div>
               {% endif %}
 
               {% if req.assigned_employee and req.assigned_employee.email %}
               <div>الإيميل:
-                <a class="text-indigo-700 hover:underline" href="mailto:{% filter force_escape %}{{ req.assigned_employee.email }}{% endfilter %}">
+                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" href="mailto:{{ req.assigned_employee.email|urlencode }}">
                   {{ req.assigned_employee.email }}
                 </a>
               </div>
               {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.email %}
               <div>الإيميل:
-                <a class="text-indigo-700 hover:underline" href="mailto:{% filter force_escape %}{{ req.selected_offer.employee.email }}{% endfilter %}">
+                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" href="mailto:{{ req.selected_offer.employee.email|urlencode }}">
                   {{ req.selected_offer.employee.email }}
                 </a>
               </div>
@@ -251,30 +311,29 @@
             </div>
           </div>
           {% endif %}
-
         </div>
       </div>
       {% endif %}
-      <!-- ================================================================================ -->
 
-      <!-- الملاحظات -->
-      <div class="rounded-xl border bg-white p-4">
+      {# الملاحظات #}
+      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
         <div class="flex items-center justify-between mb-3">
-          <div class="text-slate-500 text-sm">الملاحظات</div>
+          <div class="text-slate-500 dark:text-slate-400 text-sm">الملاحظات</div>
         </div>
 
         <div class="space-y-3">
           {% for n in req.notes.all %}
-          <div class="rounded-lg border bg-slate-50 p-3">
-            <div class="text-xs text-slate-500 mb-1">{{ n.author }} — {{ n.created_at|date:"Y-m-d H:i" }}</div>
-            <div class="text-slate-800 whitespace-pre-line">{{ n.text }}</div>
+          <div class="rounded-lg border bg-slate-50 dark:bg-slate-900/40 p-3">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">{{ n.author }} — {{ n.created_at|date:"Y-m-d H:i" }}</div>
+            <div class="text-slate-800 dark:text-slate-100 whitespace-pre-line">{{ n.text }}</div>
           </div>
           {% empty %}
-          <div class="text-slate-500 text-sm">لا توجد ملاحظات بعد.</div>
+          <div class="text-slate-500 dark:text-slate-400 text-sm">لا توجد ملاحظات بعد.</div>
           {% endfor %}
         </div>
 
-        <form class="mt-4" method="post" action="{% url 'marketplace:request_add_note' req.pk %}">
+        <form class="mt-4" method="post" action="{% url 'marketplace:request_add_note' req.pk %}"
+              onsubmit="return confirm('سيتم إضافة الملاحظة لهذا الطلب. تأكيد الإرسال؟');">
           {% csrf_token %}
           <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
             <textarea name="text" rows="2" class="input" placeholder="أضف ملاحظة"></textarea>
@@ -283,37 +342,36 @@
         </form>
       </div>
 
-      <!-- العروض (تفاصيل للعميل مع قبول/رفض) -->
-      <div class="rounded-xl border bg-white p-4">
+      {# العروض #}
+      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
         <div class="flex items-center justify-between mb-3">
-          <div class="text-slate-500 text-sm">العروض</div>
+          <div class="text-slate-500 dark:text-slate-400 text-sm">العروض</div>
         </div>
 
         <div class="space-y-3">
           {% for off in req.offers.all %}
-          <div class="rounded-lg border p-3 {% if off.status == 'selected' %}bg-green-50 border-green-200{% else %}bg-slate-50{% endif %}">
+          <div class="rounded-lg border p-3 {% if off.status == 'selected' %}bg-green-50 border-green-200 dark:bg-emerald-900/20 dark:border-emerald-900{% else %}bg-slate-50 dark:bg-slate-900/40{% endif %}">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <div class="text-slate-900 font-bold">{{ off.employee }}</div>
-                <div class="text-slate-600 text-sm mt-1">
+                <div class="text-slate-900 dark:text-white font-bold">{{ off.employee }}</div>
+                <div class="text-slate-600 dark:text-slate-300 text-sm mt-1">
                   الحالة: {{ off.get_status_display|default:off.status }}
                 </div>
-                <!-- تفاصيل العرض كما كتبها الموظف -->
                 {% if off.note %}
-                <div class="mt-2 text-slate-800 whitespace-pre-line">
+                <div class="mt-2 text-slate-800 dark:text-slate-100 whitespace-pre-line">
                   {{ off.note|urlize|linebreaksbr }}
                 </div>
                 {% endif %}
                 <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                  <span class="px-2 py-1 rounded-lg border bg-white text-slate-700">المدة: <b>{{ off.proposed_duration_days }}</b> يوم</span>
-                  <span class="px-2 py-1 rounded-lg border bg-white text-slate-700">المبلغ: <b>{{ off.proposed_price }}</b> ريال</span>
+                  <span class="px-2 py-1 rounded-lg border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">المدة: <b>{{ off.proposed_duration_days }}</b> يوم</span>
+                  <span class="px-2 py-1 rounded-lg border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">المبلغ: <b>{{ off.proposed_price }}</b> ريال</span>
                 </div>
               </div>
 
-              <!-- أزرار للعميل لاختيار/رفض عندما الطلب جديد -->
               <div class="shrink-0">
                 {% if req.client_id == request.user.id and req.status == 'new' and off.status != 'selected' %}
-                  <form method="post" action="{% url 'marketplace:offer_select_fn' off.pk %}">
+                  <form method="post" action="{% url 'marketplace:offer_select' off.pk %}"
+                        onsubmit="return confirm('سيتم اختيار هذا العرض والانتقال لمرحلة الاتفاقية. تأكيد؟');">
                     {% csrf_token %}
                     <button class="btn btn-primary">اختيار العرض</button>
                   </form>
@@ -324,23 +382,23 @@
             </div>
           </div>
           {% empty %}
-          <div class="text-slate-500 text-sm">لا توجد عروض بعد.</div>
+          <div class="text-slate-500 dark:text-slate-400 text-sm">لا توجد عروض بعد.</div>
           {% endfor %}
         </div>
       </div>
 
-      <!-- ===================== الاتفاقية ===================== -->
+      {# ===== الاتفاقية ===== #}
       {% if req.agreement %}
-        <div class="rounded-xl border bg-white p-4">
+        <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
           <div class="flex items-center justify-between mb-3">
-            <div class="text-slate-500 text-sm">الاتفاقية</div>
+            <div class="text-slate-500 dark:text-slate-400 text-sm">الاتفاقية</div>
             <div class="flex items-center gap-2">
-              <span class="px-2 py-1 rounded-lg text-xs bg-slate-100 border text-slate-700">رقم: {{ req.agreement.pk }}</span>
+              <span class="px-2 py-1 rounded-lg text-xs bg-slate-100 dark:bg-slate-900 border text-slate-700 dark:text-slate-300">رقم: {{ req.agreement.pk }}</span>
               {% if req.agreement.status %}
                 <span class="px-2 py-1 rounded-lg text-xs border
-                            {% if req.agreement.status == 'accepted' %}bg-green-50 text-green-800 border-green-200
-                            {% elif req.agreement.status == 'rejected' %}bg-rose-50 text-rose-700 border-rose-200
-                            {% else %}bg-amber-50 text-amber-800 border-amber-200{% endif %}">
+                            {% if req.agreement.status == 'accepted' %}bg-green-50 text-green-800 border-green-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:border-emerald-900
+                            {% elif req.agreement.status == 'rejected' %}bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-200 dark:border-rose-900
+                            {% else %}bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:border-amber-900{% endif %}">
                   {{ req.agreement.get_status_display|default:req.agreement.status }}
                 </span>
               {% endif %}
@@ -351,68 +409,192 @@
             <a class="btn btn-secondary" href="{% url 'agreements:open_by_request' req.pk %}">عرض/تحرير الاتفاقية</a>
 
             {% if request.user.id == req.client_id %}
-              {% if req.status == "agreement_pending" or req.agreement.status == "pending" %}
-                <form action="{% url 'agreements:accept_by_request' req.pk %}" method="post" class="inline">
+              {% if req.status == 'agreement_pending' or req.agreement.status == 'pending' %}
+                <form action="{% url 'agreements:accept_by_request' req.pk %}" method="post" class="inline"
+                      onsubmit="return confirm('سيتم اعتماد الاتفاقية والانتقال للتنفيذ. تأكيد؟');">
                   {% csrf_token %}
                   <button class="btn btn-success">موافقة</button>
                 </form>
-                <a class="btn btn-danger" href="{% url 'agreements:reject_by_request' req.pk %}">رفض</a>
+                <a class="btn btn-danger" href="{% url 'agreements:reject_by_request' req.pk %}"
+                   onclick="return confirm('سيتم رفض الاتفاقية الحالية. هل أنت متأكد؟');">رفض</a>
               {% endif %}
             {% endif %}
 
-            {% if req.agreement.status == "accepted" %}
-              <span class="text-xs text-slate-500">الاتفاقية مقبولة — لا يمكن تعديلها.</span>
+            {% if req.agreement.status == 'accepted' %}
+              <span class="text-xs text-slate-500 dark:text-slate-400">الاتفاقية مقبولة — لا يمكن تعديلها.</span>
             {% endif %}
           </div>
         </div>
-      {% else %}
-        {% if req.status == "offer_selected" %}
-          {% if request.user.id == req.assigned_employee_id or request.user.role == "admin" %}
-          <div class="rounded-xl border bg-white p-4">
-            <div class="flex items-center justify-between mb-3">
-              <div class="text-slate-500 text-sm">الاتفاقية</div>
-            </div>
-            <a class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
-               href="{% url 'agreements:open_by_request' req.pk %}">
-              إنشاء/فتح الاتفاقية
-            </a>
-            <p class="mt-2 text-xs text-slate-500">يمكن للموظف المسند أو المدير إنشاء الاتفاقية بعد اختيار عرض.</p>
+
+        {# ===== الدفعات/المراحل (Milestones) ===== #}
+        {% with ag=req.agreement %}
+        <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-slate-500 dark:text-slate-400 text-sm">الدفعات</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">تُنشأ الفواتير تلقائيًا بعد اعتماد العميل</div>
           </div>
+
+          <div class="space-y-4">
+            {% for ms in ag.milestones.all %}
+            <div id="ms-{{ ms.id }}" class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40 shadow-sm">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <div class="font-semibold text-slate-800 dark:text-white truncate">{{ ms.title }}</div>
+                    <span class="px-2 py-0.5 rounded-lg text-[11px] border bg-white/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300">#{{ ms.id }}</span>
+                  </div>
+                  <div class="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    الترتيب: {{ ms.order }} —
+                    المهلة: {{ ms.due_days|default:"—" }} يوم —
+                    المبلغ: <b>{{ ms.amount }}</b> ر.س
+                  </div>
+
+                  {% if ms.delivered_note %}
+                    <div class="mt-2 text-xs text-slate-600 dark:text-slate-300">
+                      <span class="font-semibold">ملاحظة التسليم:</span> {{ ms.delivered_note }}
+                    </div>
+                  {% endif %}
+                  {% if ms.rejected_reason %}
+                    <div class="mt-2 text-xs text-rose-600 dark:text-rose-300">
+                      <span class="font-semibold">سبب الرفض:</span> {{ ms.rejected_reason }}
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div class="flex items-center flex-wrap gap-2">
+                  {% if ms.is_paid %}
+                    <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-200 text-xs">مدفوعة</span>
+                  {% elif ms.is_approved %}
+                    <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-200 text-xs">معتمدة</span>
+                  {% elif ms.is_rejected %}
+                    <span class="px-2 py-1 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:text-rose-200 text-xs">مرفوضة</span>
+                  {% elif ms.is_pending_review %}
+                    <span class="px-2 py-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-200 text-xs">بانتظار مراجعة العميل</span>
+                  {% elif ms.is_delivered %}
+                    <span class="px-2 py-1 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/20 dark:text-sky-200 text-xs">تم التسليم</span>
+                  {% else %}
+                    <span class="px-2 py-1 rounded bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 text-xs">جديدة</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="mt-4 flex flex-wrap items-start gap-3">
+
+                {# الموظف المسند: تسليم المرحلة #}
+                {% if request.user.is_authenticated and request.user.id == req.assigned_employee_id %}
+                  {% if not ms.is_approved and not ms.is_paid and not ms.is_rejected and not ms.is_pending_review and not ms.is_delivered %}
+                    <form method="post" action="{% url 'agreements:milestone_deliver' ms.id %}#ms-{{ ms.id }}"
+                          class="flex items-start gap-2"
+                          onsubmit="return confirm('سيتم تعليم هذه المرحلة كـ (تم التسليم) مع حفظ الملاحظة إن وُجدت. تأكيد؟');">
+                      {% csrf_token %}
+                      <textarea name="note" rows="2" class="input !p-2 !text-xs" placeholder="ملاحظة التسليم (اختياري)"></textarea>
+                      <button class="btn btn-secondary">تسليم المرحلة</button>
+                    </form>
+                  {% else %}
+                    <button class="btn btn-secondary opacity-60 cursor-not-allowed" disabled title="لا يمكن التسليم بعد الاعتماد/الرفض/السداد أو عند انتظار المراجعة">تسليم المرحلة</button>
+                  {% endif %}
+                {% endif %}
+
+                {# العميل: اعتماد أو رفض #}
+                {% if request.user.is_authenticated and request.user.id == req.client_id %}
+                  {% if ms.is_pending_review %}
+                    <form method="post" action="{% url 'agreements:milestone_approve' ms.id %}#ms-{{ ms.id }}"
+                          onsubmit="return confirm('سيتم اعتماد هذه المرحلة والانتقال لإصدار الفاتورة. تأكيد الاعتماد؟');">
+                      {% csrf_token %}
+                      <button class="btn btn-success">اعتماد</button>
+                    </form>
+
+                    <button class="btn btn-danger" data-reject-modal="#rej-{{ ms.id }}">رفض</button>
+
+                    {# مودال الرفض #}
+                    <div id="rej-{{ ms.id }}" class="fixed inset-0 z-50 hidden">
+                      <div class="absolute inset-0 bg-black/40" data-close-modal></div>
+                      <div class="mx-auto mt-24 w-[92%] max-w-lg rounded-2xl border bg-white dark:bg-slate-800 shadow-xl overflow-hidden">
+                        <div class="p-4 border-b bg-rose-50 dark:bg-rose-900/20">
+                          <div class="font-semibold text-rose-700 dark:text-rose-200">رفض المرحلة: {{ ms.title }}</div>
+                        </div>
+                        <form method="post" action="{% url 'agreements:milestone_reject' ms.id %}#ms-{{ ms.id }}"
+                              onsubmit="return confirm('سيتم رفض هذه المرحلة مع السبب المدخل. تأكيد الرفض؟');">
+                          {% csrf_token %}
+                          <div class="p-4 space-y-3">
+                            <label class="text-sm text-slate-700 dark:text-slate-200">سبب الرفض</label>
+                            <textarea name="reason" rows="3" class="input" placeholder="فضلاً اكتب سببًا واضحًا (3 أحرف على الأقل)"></textarea>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">لن يتم قبول الرفض بدون سبب واضح.</p>
+                          </div>
+                          <div class="p-4 border-t flex items-center justify-end gap-2">
+                            <button type="button" class="btn btn-ghost" data-close-modal>إلغاء</button>
+                            <button class="btn btn-danger">تأكيد الرفض</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  {% else %}
+                    <button class="btn btn-success opacity-60 cursor-not-allowed" disabled title="لا يمكن الاعتماد الآن">اعتماد</button>
+                    <button class="btn btn-danger opacity-60 cursor-not-allowed" disabled title="لا يمكن الرفض الآن">رفض</button>
+                  {% endif %}
+                {% endif %}
+
+                {# رابط الفاتورة إن وُجدت #}
+                {% if ms.invoice %}
+                  <a href="{% url 'finance:invoice_detail' ms.invoice.id %}" class="btn btn-ghost">عرض الفاتورة</a>
+                {% endif %}
+
+              </div>
+            </div>
+            {% empty %}
+              <div class="text-slate-500 dark:text-slate-400 text-sm">لا توجد دفعات بعد.</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endwith %}
+      {% else %}
+        {% if req.status == 'offer_selected' %}
+          {% if request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
+            <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="text-slate-500 dark:text-slate-400 text-sm">الاتفاقية</div>
+              </div>
+              <a class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
+                 href="{% url 'agreements:open_by_request' req.pk %}">
+                إنشاء/فتح الاتفاقية
+              </a>
+              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">يمكن للموظف المسند أو المدير إنشاء الاتفاقية بعد اختيار عرض.</p>
+            </div>
           {% endif %}
         {% endif %}
       {% endif %}
-      <!-- ===================================================== -->
 
-      <!-- المرفقات (إن كانت مفعلة) -->
+      {# المرفقات #}
       {% if uploads %}
-      <div class="rounded-xl border bg-white p-4">
+      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
         <div class="flex items-center justify-between mb-3">
-          <div class="text-slate-500 text-sm">المرفقات</div>
+          <div class="text-slate-500 dark:text-slate-400 text-sm">المرفقات</div>
         </div>
         <ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {% for up in uploads %}
-          <li id="up-{{ up.id }}" class="rounded-lg border bg-slate-50 p-3">
-            <div class="flex items-center justify_between gap-2">
-              <a class="truncate text-indigo-700 hover:underline" href="{{ up.file.url }}" target="_blank" rel="noopener">تحميل/عرض</a>
+          <li id="up-{{ up.id }}" class="rounded-lg border bg-slate-50 dark:bg-slate-900/40 p-3">
+            <div class="flex items-center justify-between gap-2">
+              <a class="truncate text-indigo-700 dark:text-indigo-300 hover:underline" href="{{ up.file.url }}" target="_blank" rel="noopener noreferrer">تحميل/عرض</a>
               {% if up.can_delete %}
-              <form method="post" action="{% url 'uploads:delete' up.id %}">
+              <form method="post" action="{% url 'uploads:delete' up.id %}"
+                    onsubmit="return confirm('سيتم حذف هذا المرفق نهائيًا. متابعة؟');">
                 {% csrf_token %}
                 <button class="text-rose-600 text-sm hover:underline">حذف</button>
               </form>
               {% endif %}
             </div>
-            <div class="text-xs text-slate-500 mt-1">{{ up.created_at|date:"Y-m-d H:i" }}</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ up.created_at|date:"Y-m-d H:i" }}</div>
           </li>
           {% endfor %}
         </ul>
       </div>
       {% endif %}
 
-      <!-- المحادثة (إن كانت مفعلة) -->
+      {# المحادثة #}
       {% if thread_embed_url %}
-      <div class="rounded-xl border bg-white p-4">
+      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
         <div class="flex items-center justify-between mb-3">
-          <div class="text-slate-500 text-sm">المحادثة</div>
+          <div class="text-slate-500 dark:text-slate-400 text-sm">المحادثة</div>
         </div>
         <iframe src="{{ thread_embed_url }}" class="w-full h-[540px] rounded-xl border"></iframe>
       </div>
@@ -422,4 +604,33 @@
   </div>
 
 </section>
+
+{# سكربت تفعيل المودال + إغلاق التوستات تلقائياً #}
+<script>
+document.addEventListener('click', function(e) {
+  const openBtn = e.target.closest('[data-reject-modal]');
+  if (openBtn) {
+    const sel = openBtn.getAttribute('data-reject-modal');
+    const modal = document.querySelector(sel);
+    if (modal) modal.classList.remove('hidden');
+  }
+  if (e.target.matches('[data-close-modal]')) {
+    const modal = e.target.closest('.fixed.inset-0');
+    if (modal) modal.classList.add('hidden');
+  }
+  const closeAlert = e.target.closest('[data-close-alert]');
+  if (closeAlert) {
+    const wrap = closeAlert.closest('.rounded-xl, .rounded-lg, .rounded-2xl');
+    if (wrap) wrap.remove();
+  }
+});
+setTimeout(function() {
+  const msgs = document.querySelectorAll('#messages-area > *');
+  msgs.forEach(function(el) {
+    el.classList.add('transition', 'duration-500', 'ease-out');
+    el.style.opacity = '0';
+    setTimeout(function(){ el.remove(); }, 600);
+  });
+}, 4500);
+</script>
 {% endblock %}

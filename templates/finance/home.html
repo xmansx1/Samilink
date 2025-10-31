@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}لوحة المالية{% endblock %}
+{% block content %}
+<section class="max-w-7xl mx-auto rtl" dir="rtl">
+  <h1 class="text-2xl font-extrabold mb-6">لوحة المالية</h1>
+
+  <div class="grid md:grid-cols-4 gap-4">
+    <div class="card p-5">
+      <div class="text-slate-500 text-sm mb-1">طلبات قيد التنفيذ</div>
+      <div class="text-2xl font-extrabold">{{ inprogress_count }}</div>
+      <a href="{% url 'finance:inprogress' %}" class="btn btn-ghost mt-3">عرض القائمة</a>
+    </div>
+    <div class="card p-5">
+      <div class="text-slate-500 text-sm mb-1">إجمالي مبالغ الاتفاقيات</div>
+      <div class="text-2xl font-extrabold">{{ total_agreements_amount|default:0|floatformat:2 }} ر.س</div>
+    </div>
+    <div class="card p-5">
+      <div class="text-slate-500 text-sm mb-1">إجمالي غير مدفوع</div>
+      <div class="text-2xl font-extrabold text-amber-600">{{ unpaid_sum|default:0|floatformat:2 }} ر.س</div>
+    </div>
+    <div class="card p-5">
+      <div class="text-slate-500 text-sm mb-1">إجمالي مدفوع</div>
+      <div class="text-2xl font-extrabold text-emerald-600">{{ paid_sum|default:0|floatformat:2 }} ر.س</div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-4 mt-6">
+    <a href="{% url 'finance:client_payments' %}" class="card p-5 hover:shadow-lg">
+      <div class="font-bold mb-1">مدفوعات العملاء</div>
+      <div class="text-slate-500 text-sm">عرض كل فواتير العملاء (حسب الحساب الحالي إن كان عميلًا).</div>
+    </a>
+    <a href="{% url 'finance:employee_dues' %}" class="card p-5 hover:shadow-lg">
+      <div class="font-bold mb-1">مستحقات الموظفين</div>
+      <div class="text-slate-500 text-sm">عرض فواتير اتفاقيات الموظف (أو حسب المستخدم الحالي إن كان موظفًا).</div>
+    </a>
+    <a href="{% url 'finance:inprogress' %}" class="card p-5 hover:shadow-lg">
+      <div class="font-bold mb-1">طلبات التنفيذ</div>
+      <div class="text-slate-500 text-sm">إدارة التحصيل للطلبات قيد التنفيذ.</div>
+    </a>
+  </div>
+</section>
+{% endblock %}
