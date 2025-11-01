@@ -1,0 +1,258 @@
+{# templates/finance/invoice_detail.html #}
+{% extends "base.html" %}
+{% block title %}فاتورة #{{ invoice.id|default:inv.id }}{% endblock %}
+
+{% block content %}
+{# توحيد الاسم: إن كان الـ context يمرّر inv سنحوّله إلى invoice #}
+{% with invoice|default:inv as invoice %}
+
+<section class="py-8 max-w-6xl mx-auto rtl" dir="rtl">
+
+  <div class="rounded-2xl border bg-white/80 dark:bg-slate-800/70 backdrop-blur shadow-glass-lg overflow-hidden">
+
+    {# رسائل النظام #}
+    {% if messages %}
+    <div class="p-4 border-b bg-gradient-to-l from-emerald-50 to-sky-50 dark:from-slate-800 dark:to-slate-900">
+      <div class="space-y-2" id="messages-area">
+        {% for message in messages %}
+          <div class="rounded-xl border px-4 py-3 text-sm flex items-start gap-2
+                      {% if message.tags == 'success' %} bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-900 dark:text-emerald-200
+                      {% elif message.tags == 'warning' %} bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-900 dark:text-amber-200
+                      {% elif message.tags == 'error' %} bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/20 dark:border-rose-200
+                      {% else %} bg-slate-50 border-slate-200 text-slate-800 dark:bg-slate-900/30 dark:border-slate-800 dark:text-slate-200 {% endif %}">
+            <div class="mt-0.5">•</div>
+            <div class="whitespace-pre-line">{{ message }}</div>
+            <button type="button" class="ms-auto text-xs text-slate-500 hover:underline" data-close-alert>إغلاق</button>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# رأس الصفحة #}
+    <div class="p-6 border-b bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-slate-800 dark:to-slate-900">
+      <div class="flex items-start justify-between gap-6">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              فاتورة #{{ invoice.id }}
+            </h1>
+            <span class="px-2 py-1 rounded-lg text-xs border bg-white/70 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300">
+              {% if invoice.is_paid %}مدفوعة{% elif invoice.is_unpaid %}غير مدفوعة{% else %}{{ invoice.get_status_display|default:invoice.status }}{% endif %}
+            </span>
+            {% if invoice.due_at %}
+              <span class="px-2 py-1 rounded-lg text-xs border bg-white/70 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300">
+                موعد السداد: {{ invoice.due_at|date:"Y-m-d H:i" }}
+              </span>
+            {% endif %}
+            {% if invoice.is_overdue %}
+              <span class="px-2 py-1 rounded-lg text-xs bg-rose-50 text-rose-700 border border-rose-200">متأخرة</span>
+            {% endif %}
+          </div>
+
+          <p class="text-slate-600 dark:text-slate-300 text-sm mt-2">
+            {% if invoice.milestone and invoice.milestone.agreement and invoice.milestone.agreement.request %}
+              الطلب:
+              <a class="text-indigo-700 dark:text-indigo-300 hover:underline"
+                 href="{% url 'marketplace:request_detail' invoice.milestone.agreement.request.id %}">
+                 #{{ invoice.milestone.agreement.request.id }} — {{ invoice.milestone.agreement.request.title }}
+              </a>
+            {% else %}
+              — غير مرتبط بطلب —
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="shrink-0 text-right">
+          <div class="text-slate-500 dark:text-slate-400 text-sm">آخر تحديث</div>
+          <div class="font-semibold text-slate-900 dark:text-slate-100">{{ invoice.updated_at|date:"Y-m-d H:i" }}</div>
+        </div>
+      </div>
+    </div>
+
+    {# محتوى الصفحة #}
+    <div class="p-6 space-y-6">
+
+      {# بطاقات موجزة #}
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="rounded-xl border p-4 bg-white dark:bg-slate-800">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">المبلغ</div>
+          <div class="text-2xl font-extrabold text-slate-900 dark:text-white">
+            {{ invoice.amount }} <span class="text-sm font-normal text-slate-500">ر.س</span>
+          </div>
+        </div>
+        <div class="rounded-xl border p-4 bg-white dark:bg-slate-800">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">تاريخ الإصدار</div>
+          <div class="text-lg font-semibold text-slate-900 dark:text-white">{{ invoice.issued_at|date:"Y-m-d H:i" }}</div>
+        </div>
+        <div class="rounded-xl border p-4 bg-white dark:bg-slate-800">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">موعد السداد</div>
+          <div class="text-lg font-semibold">
+            {% if invoice.due_at %}{{ invoice.due_at|date:"Y-m-d H:i" }}{% else %}<span class="text-slate-500">—</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {# تفاصيل الفاتورة والارتباطات #}
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
+          <div class="text-slate-600 dark:text-slate-300 text-sm mb-2">تفاصيل الفاتورة</div>
+          <div class="space-y-2 text-slate-800 dark:text-slate-100">
+            <div>الحالة:
+              {% if invoice.is_paid %}<b class="text-emerald-700 dark:text-emerald-300">مدفوعة</b>
+              {% elif invoice.is_unpaid %}<b class="text-amber-700 dark:text-amber-300">غير مدفوعة</b>
+              {% else %}<b>{{ invoice.get_status_display|default:invoice.status }}</b>{% endif %}
+            </div>
+            {% if invoice.paid_at %}
+              <div>تاريخ السداد: <b>{{ invoice.paid_at|date:"Y-m-d H:i" }}</b></div>
+            {% endif %}
+            {% if invoice.reference %}
+              <div>المرجع: <b dir="ltr">{{ invoice.reference }}</b>
+                <button type="button" class="ml-2 text-xs text-indigo-700 dark:text-indigo-300 hover:underline" data-copy="#ref-val">نسخ</button>
+                <span id="ref-val" class="sr-only">{{ invoice.reference }}</span>
+              </div>
+            {% endif %}
+            {% if invoice.description %}
+              <div class="pt-2 border-t"><span class="text-sm text-slate-600 dark:text-slate-300">الوصف:</span>
+                <div class="mt-1 prose prose-slate dark:prose-invert max-w-none whitespace-pre-line">
+                  {{ invoice.description|urlize|linebreaksbr }}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="rounded-xl border p-4 bg-white dark:bg-slate-800">
+          <div class="text-slate-600 dark:text-slate-300 text-sm mb-2">المرحلة / الاتفاقية</div>
+          <div class="space-y-2 text-slate-800 dark:text-slate-100">
+            {% if invoice.milestone %}
+              <div>المرحلة: <b>{{ invoice.milestone.title }}</b></div>
+              <div>قيمة المرحلة: <b>{{ invoice.milestone.amount }}</b> <span class="text-xs text-slate-500">ر.س</span></div>
+              <div>حالة المرحلة:
+                {% if invoice.milestone.is_paid %}<b class="text-emerald-700 dark:text-emerald-300">مدفوعة</b>
+                {% elif invoice.milestone.is_approved %}<b class="text-emerald-700 dark:text-emerald-300">معتمدة</b>
+                {% elif invoice.milestone.is_pending_review %}<b class="text-amber-700 dark:text-amber-300">بانتظار مراجعة</b>
+                {% elif invoice.milestone.is_delivered %}<b class="text-sky-700 dark:text-sky-300">تم التسليم</b>
+                {% elif invoice.milestone.is_rejected %}<b class="text-rose-700 dark:text-rose-300">مرفوضة</b>
+                {% else %}<b class="text-slate-700">جديدة</b>{% endif %}
+              </div>
+
+              {# رابط الاتفاقية — إصلاح NoReverseMatch: استخدم open_by_request #}
+              {% if invoice.milestone.agreement and invoice.milestone.agreement.request %}
+                <div>الاتفاقية:
+                  <a class="text-indigo-700 dark:text-indigo-300 hover:underline"
+                     href="{% url 'agreements:open_by_request' invoice.milestone.agreement.request.id %}">
+                    #{{ invoice.milestone.agreement.id }}
+                  </a>
+                </div>
+              {% endif %}
+
+              {% if invoice.milestone.agreement and invoice.milestone.agreement.request %}
+                <div>الطلب:
+                  <a class="text-indigo-700 dark:text-indigo-300 hover:underline"
+                     href="{% url 'marketplace:request_detail' invoice.milestone.agreement.request.id %}">
+                    #{{ invoice.milestone.agreement.request.id }}
+                  </a>
+                </div>
+              {% endif %}
+            {% else %}
+              <div>لا توجد مرحلة مرتبطة.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {# (اختياري) بنود الفاتورة #}
+      <div class="rounded-2xl border bg-white/80 dark:bg-slate-900/40 p-4">
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="font-semibold text-slate-800 dark:text-slate-100">بنود الفاتورة</h3>
+        </div>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-slate-600 dark:text-slate-300">
+                <th class="p-2 text-start">البند</th>
+                <th class="p-2 text-start">الكمية</th>
+                <th class="p-2 text-start">السعر</th>
+                <th class="p-2 text-start">الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for it in invoice.items.all %}
+              <tr class="border-t">
+                <td class="p-2">{{ it.title|default:"—" }}</td>
+                <td class="p-2">{{ it.qty|default:"1" }}</td>
+                <td class="p-2">{{ it.price }}</td>
+                <td class="p-2">{{ it.total|default:it.price }}</td>
+              </tr>
+              {% empty %}
+              <tr class="border-t">
+                <td class="p-2 text-slate-500" colspan="4">لا توجد بنود.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# إجراءات #}
+      <div class="rounded-xl border p-4 bg-white dark:bg-slate-800">
+        <div class="flex flex-wrap items-center gap-2">
+          <a href="javascript:window.print()" class="btn btn-ghost">طباعة</a>
+
+          {% if request.user.is_authenticated %}
+            {% if request.user.role == 'finance' or request.user.is_staff %}
+              <form method="post" action="{% url 'finance:invoice_mark_paid' invoice.id %}"
+                    onsubmit="return confirm('تأكيد وسم الفاتورة كمدفوعة؟');" class="inline">
+                {% csrf_token %}
+                <button class="btn btn-success" {% if invoice.is_paid %}disabled{% endif %}>وسم كمدفوعة</button>
+              </form>
+            {% endif %}
+          {% endif %}
+
+          {% if invoice.milestone and invoice.milestone.agreement and invoice.milestone.agreement.request %}
+            <a class="btn btn-secondary" href="{% url 'marketplace:request_detail' invoice.milestone.agreement.request.id %}">
+              الرجوع إلى الطلب
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</section>
+
+{# سكربتات مساعدة: نسخ المرجع + إغلاق التوستات #}
+<script>
+document.addEventListener('click', function(e) {
+  const copyBtn = e.target.closest('[data-copy]');
+  if (copyBtn) {
+    const sel = copyBtn.getAttribute('data-copy');
+    const el = document.querySelector(sel);
+    if (el) {
+      const txt = el.textContent || el.value || '';
+      navigator.clipboard.writeText(txt).then(function() {
+        copyBtn.textContent = 'نُسخ';
+        setTimeout(function(){ copyBtn.textContent = 'نسخ'; }, 1200);
+      });
+    }
+  }
+  const closeAlert = e.target.closest('[data-close-alert]');
+  if (closeAlert) {
+    const wrap = closeAlert.closest('.rounded-xl, .rounded-lg, .rounded-2xl');
+    if (wrap) wrap.remove();
+  }
+});
+setTimeout(function() {
+  const msgs = document.querySelectorAll('#messages-area > *');
+  msgs.forEach(function(el) {
+    el.classList.add('transition','duration-500','ease-out');
+    el.style.opacity = '0';
+    setTimeout(function(){ el.remove(); }, 600);
+  });
+}, 4500);
+</script>
+
+{% endwith %}
+{% endblock %}

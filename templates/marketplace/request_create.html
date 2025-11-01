@@ -25,7 +25,7 @@
       </div>
     {% endif %}
 
-    <form id="createRequestForm" method="post" class="space-y-6">
+    <form id="createRequestForm" method="post" {% if form.is_multipart %}enctype="multipart/form-data"{% endif %} class="space-y-6" autocomplete="off">
       {% csrf_token %}
 
       <!-- العنوان -->
@@ -120,6 +120,14 @@
   var form = document.getElementById('createRequestForm');
   var submitBtn = document.getElementById('submitBtn');
 
+  // تحويل الأرقام العربية إلى إنجليزية (للعدادات والسعر)
+  function toEngDigits(str) {
+    if (!str) return str;
+    var map = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9',
+               '۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9'};
+    return String(str).replace(/[٠-٩۰-۹]/g, function (d) { return map[d] || d; });
+  }
+
   // عدّادات الحروف
   var titleInput = document.getElementById('{{ form.title.id_for_label }}');
   var detailsInput = document.getElementById('{{ form.details.id_for_label }}');
@@ -128,12 +136,13 @@
 
   function updateCounter(el, counterEl, max) {
     if (!el || !counterEl) return;
-    var len = el.value ? el.value.length : 0;
+    var len = (el.value ? el.value : '').length;
     counterEl.textContent = len + '/' + max;
   }
 
   if (titleInput && titleCounter) {
     var maxTitle = 120;
+    titleInput.setAttribute('autofocus', 'autofocus');
     titleInput.addEventListener('input', function () { updateCounter(titleInput, titleCounter, maxTitle); });
     updateCounter(titleInput, titleCounter, maxTitle);
   }
@@ -143,13 +152,21 @@
     updateCounter(detailsInput, detailsCounter, maxDetails);
   }
 
-  // معاينة السعر
+  // معاينة السعر (تدعم الأرقام العربية والفواصل)
   var priceInput = document.getElementById('{{ form.estimated_price.id_for_label }}');
   var pricePreview = document.getElementById('pricePreview');
+  function parsePrice(v) {
+    if (v === undefined || v === null) return NaN;
+    v = toEngDigits(String(v)).replace(/[,\s]/g, '');
+    var n = parseFloat(v);
+    return isNaN(n) ? NaN : n;
+  }
   function formatPrice(v) {
-    if (v === '' || v === null || isNaN(v)) return '—';
-    try { return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(parseFloat(v)); }
-    catch (e) { return v; }
+    if (v === '' || v === null) return '—';
+    var n = parsePrice(v);
+    if (isNaN(n)) return '—';
+    try { return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(n); }
+    catch (e) { return String(n); }
   }
   if (priceInput && pricePreview) {
     var onPrice = function () { pricePreview.textContent = formatPrice(priceInput.value); };
@@ -183,14 +200,16 @@
   }
 
   // منع إرسال النموذج إذا كان هناك أخطاء واضحة
-  form.addEventListener('submit', function (e) {
-    var okLinks = validateLinks();
-    if (!okLinks) {
-      e.preventDefault();
-      return false;
-    }
-    if (submitBtn) submitBtn.disabled = true;
-  });
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      var okLinks = validateLinks();
+      if (!okLinks) {
+        e.preventDefault();
+        return false;
+      }
+      if (submitBtn) submitBtn.disabled = true;
+    });
+  }
 })();
 </script>
 {% endblock %}

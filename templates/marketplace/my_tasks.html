@@ -16,24 +16,24 @@
         </div>
       </div>
 
-      <!-- إحصاءات أعلى الصفحة (اختياري) -->
+      {# إحصاءات أعلى الصفحة (اختياري) #}
       {% if metrics %}
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
         <div class="rounded-xl border bg-white p-4">
           <div class="text-slate-500 text-xs">إجمالي</div>
-          <div class="text-xl font-bold">{{ metrics.total }}</div>
+          <div class="text-xl font-bold">{{ metrics.total|default:"0" }}</div>
         </div>
         <div class="rounded-xl border bg-white p-4">
           <div class="text-slate-500 text-xs">قيد التنفيذ</div>
-          <div class="text-xl font-bold">{{ metrics.in_progress }}</div>
+          <div class="text-xl font-bold">{{ metrics.in_progress|default:"0" }}</div>
         </div>
         <div class="rounded-xl border bg-white p-4">
           <div class="text-slate-500 text-xs">بانتظار اتفاق</div>
-          <div class="text-xl font-bold">{{ metrics.pending_agreement }}</div>
+          <div class="text-xl font-bold">{{ metrics.pending_agreement|default:"0" }}</div>
         </div>
         <div class="rounded-xl border bg-white p-4">
           <div class="text-slate-500 text-xs">مكتمل</div>
-          <div class="text-xl font-bold">{{ metrics.completed }}</div>
+          <div class="text-xl font-bold">{{ metrics.completed|default:"0" }}</div>
         </div>
       </div>
       {% endif %}
@@ -52,10 +52,10 @@
             <!-- العنوان + الحالة -->
             <div class="min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <div class="text-slate-900 font-bold text-lg truncate">{{ obj.title }}</div>
+                <div class="text-slate-900 font-bold text-lg truncate">{{ obj.title|default:"طلب بدون عنوان" }}</div>
                 <span class="px-2 py-1 rounded-lg text-xs border bg-white text-slate-700">#{{ obj.pk }}</span>
 
-                <!-- شارة الحالة بألوان مميزة -->
+                {# شارة الحالة (القيم المعتمدة) #}
                 {% if obj.status == "new" %}
                   <span class="px-2 py-1 rounded-lg text-xs bg-sky-50 text-sky-700 border border-sky-200">{{ obj.get_status_display|default:"جديد" }}</span>
                 {% elif obj.status == "offer_selected" %}
@@ -64,11 +64,9 @@
                   <span class="px-2 py-1 rounded-lg text-xs bg-amber-50 text-amber-800 border border-amber-200">{{ obj.get_status_display|default:"بانتظار الاتفاقية" }}</span>
                 {% elif obj.status == "in_progress" %}
                   <span class="px-2 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-800 border border-indigo-200">{{ obj.get_status_display|default:"قيد التنفيذ" }}</span>
-                {% elif obj.status == "under_review" %}
-                  <span class="px-2 py-1 rounded-lg text-xs bg-violet-50 text-violet-800 border border-violet-200">{{ obj.get_status_display|default:"قيد المراجعة" }}</span>
                 {% elif obj.status == "completed" %}
                   <span class="px-2 py-1 rounded-lg text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">{{ obj.get_status_display|default:"مكتمل" }}</span>
-                {% elif obj.status == "dispute" %}
+                {% elif obj.status == "disputed" %}
                   <span class="px-2 py-1 rounded-lg text-xs bg-rose-50 text-rose-700 border border-rose-200">{{ obj.get_status_display|default:"نزاع" }}</span>
                 {% elif obj.status == "cancelled" %}
                   <span class="px-2 py-1 rounded-lg text-xs bg-slate-50 text-slate-600 border border-slate-200">{{ obj.get_status_display|default:"ملغي" }}</span>
@@ -79,7 +77,7 @@
 
               <!-- سطر ثانٍ: العميل + الموظف (أنت) -->
               <div class="text-slate-500 text-sm mt-1 truncate">
-                العميل: <b>{{ obj.client }}</b> — أنت الموظف المعيّن
+                العميل: <b>{{ obj.client|default:"—" }}</b> — أنت الموظف المعيّن
               </div>
 
               <!-- شريط المدة/المبلغ مع تمييز قيم العميل الافتراضية -->
@@ -91,23 +89,23 @@
                   المبلغ (عميل): <b>{{ obj.estimated_price|default:"—" }}</b> ريال
                 </span>
 
-                <!-- عند اختيار العرض قد تختلف القيم -->
+                {# عند اختيار العرض قد تختلف القيم #}
                 {% if obj.selected_offer %}
                 <span class="px-2 py-1 rounded-lg border bg-amber-50 text-amber-800">
-                  المدة (عرض): <b>{{ obj.selected_offer.proposed_duration_days }}</b> يوم
+                  المدة (عرض): <b>{{ obj.selected_offer.proposed_duration_days|default:"—" }}</b> يوم
                 </span>
                 <span class="px-2 py-1 rounded-lg border bg-amber-50 text-amber-800">
-                  المبلغ (عرض): <b>{{ obj.selected_offer.proposed_price }}</b> ريال
+                  المبلغ (عرض): <b>{{ obj.selected_offer.proposed_price|default:"—" }}</b> ريال
                 </span>
                 {% endif %}
 
-                <!-- عند وجود اتفاقية -->
+                {# عند وجود اتفاقية #}
                 {% if obj.agreement %}
                 <span class="px-2 py-1 rounded-lg border bg-emerald-50 text-emerald-700">
-                  المدة (اتفاق): <b>{{ obj.agreement.duration_days }}</b> يوم
+                  المدة (اتفاق): <b>{{ obj.agreement.duration_days|default:"—" }}</b> يوم
                 </span>
                 <span class="px-2 py-1 rounded-lg border bg-emerald-50 text-emerald-700">
-                  المبلغ (اتفاق): <b>{{ obj.agreement.total_amount }}</b> ريال
+                  المبلغ (اتفاق): <b>{{ obj.agreement.total_amount|default:"—" }}</b> ريال
                 </span>
                 {% endif %}
               </div>
@@ -115,7 +113,7 @@
 
             <!-- الطابع الزمني -->
             <div class="text-slate-400 text-xs shrink-0">
-              {{ obj.updated_at|date:"Y-m-d H:i" }}
+              {{ obj.updated_at|date:"Y-m-d H:i"|default:"" }}
             </div>
           </div>
         </a>
@@ -125,7 +123,7 @@
 
       </div>
 
-      <!-- ترقيم الصفحات -->
+      {# ترقيم الصفحات #}
       {% if is_paginated %}
       <div class="flex justify-center gap-2 mt-6">
         {% if page_obj.has_previous %}

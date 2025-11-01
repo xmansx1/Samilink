@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}فتح نزاع — طلب #{{ req.pk }}{% endblock %}
+{% block content %}
+<section class="max-w-2xl mx-auto rtl py-8" dir="rtl">
+  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 space-y-4">
+    <h1 class="text-xl font-bold">فتح نزاع للطلب #{{ req.pk }}</h1>
+
+    {# أخطاء عامة للنموذج #}
+    {% if form.non_field_errors %}
+      <div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 text-sm">
+        {% for err in form.non_field_errors %}
+          <div>{{ err }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'disputes:open' req.pk %}" onsubmit="return confirm('سيتم فتح نزاع لهذا الطلب. تأكيد؟');">
+      {% csrf_token %}
+      {{ form.media }}
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm text-slate-600 dark:text-slate-300 mb-1">العنوان</label>
+          {{ form.title }}
+          {% if form.title.errors %}
+            <p class="mt-1 text-xs text-red-600">
+              {% for e in form.title.errors %}{{ e }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+            </p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-600 dark:text-slate-300 mb-1">السبب</label>
+          {{ form.reason }}
+          {% if form.reason.errors %}
+            <p class="mt-1 text-xs text-red-600">
+              {% for e in form.reason.errors %}{{ e }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+            </p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-600 dark:text-slate-300 mb-1">تفاصيل إضافية</label>
+          {{ form.details }}
+          {% if form.details.errors %}
+            <p class="mt-1 text-xs text-red-600">
+              {% for e in form.details.errors %}{{ e }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+            </p>
+          {% endif %}
+        </div>
+
+        {# اختياري: ربط النزاع بمرحلة معينة إن رغبت #}
+        {% if request.GET.milestone_id %}
+          <input type="hidden" name="milestone_id" value="{{ request.GET.milestone_id }}">
+        {% endif %}
+      </div>
+
+      <div class="mt-6 flex items-center gap-2">
+        <button class="btn btn-danger">فتح نزاع</button>
+        <a href="{{ req.get_absolute_url }}" class="btn btn-ghost">رجوع</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

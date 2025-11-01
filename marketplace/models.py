@@ -1,10 +1,14 @@
 # marketplace/models.py
+from __future__ import annotations
+
 from datetime import timedelta
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.utils import timezone
+from django.db.models import Q
 from django.urls import reverse
+from django.utils import timezone
 
 User = settings.AUTH_USER_MODEL
 
@@ -16,7 +20,7 @@ class Request(models.Model):
         AGREEMENT_PENDING = "agreement_pending", "اتفاقية بانتظار الموافقة"
         IN_PROGRESS = "in_progress", "قيد التنفيذ"
         COMPLETED = "completed", "مكتمل"
-        DISPUTE = "dispute", "نزاع"
+        DISPUTED = "disputed", "نزاع"          # توحيد التسمية إلى DISPUTED للتوافق مع بقية التطبيقات
         CANCELLED = "cancelled", "ملغى"
 
     client = models.ForeignKey(User, on_delete=models.CASCADE, related_name="requests_as_client")
@@ -30,7 +34,10 @@ class Request(models.Model):
     estimated_price = models.DecimalField("سعر تقريبي", max_digits=12, decimal_places=2, default=0)
     links = models.TextField("روابط مرتبطة (اختياري)", blank=True)
 
-    status = models.CharField(max_length=32, choices=Status.choices, default=Status.NEW)
+    # الحالة الموحدة
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.NEW, db_index=True)
+
+    # أعلام مساعدة (تبقى مشتقة منطقيًا لكن نحتفظ بها للتوافق مع الواجهات)
     has_milestones = models.BooleanField(default=False)
     has_dispute = models.BooleanField(default=False)
 
@@ -48,21 +55,46 @@ class Request(models.Model):
     def clean(self):
         if self.assigned_employee and getattr(self.assigned_employee, "role", None) != "employee":
             raise ValidationError("الإسناد يجب أن يكون إلى مستخدم بدور 'موظف'.")
+        if self.estimated_duration_days == 0:
+            raise ValidationError("المدة التقديرية بالأيام يجب أن تكون أكبر من صفر.")
+        if self.estimated_price < 0:
+            raise ValidationError("السعر التقديري لا يمكن أن يكون سالبًا.")
 
     @property
     def agreement_overdue(self) -> bool:
         return bool(self.agreement_due_at and timezone.now() > self.agreement_due_at)
 
+    # خصائص قراءة مريحة للقوالب
+    @property
+    def is_new(self): return self.status == self.Status.NEW
+    @property
+    def is_offer_selected(self): return self.status == self.Status.OFFER_SELECTED
+    @property
+    def is_agreement_pending(self): return self.status == self.Status.AGREEMENT_PENDING
+    @property
+    def is_in_progress(self): return self.status == self.Status.IN_PROGRESS
+    @property
+    def is_completed(self): return self.status == self.Status.COMPLETED
+    @property
+    def is_disputed(self): return self.status == self.Status.DISPUTED or self.has_dispute
+    @property
+    def is_cancelled(self): return self.status == self.Status.CANCELLED
+
     @property
     def selected_offer(self):
-        # توافقًا مع أي كود قديم قد يستدعي 'selected'
+        """
+        توافقًا مع أي كود قديم قد يستدعي 'selected' كنص خام.
+        """
         try:
             return self.offers.select_related("employee").filter(status=Offer.Status.SELECTED).first()
         except NameError:
             return self.offers.select_related("employee").filter(status="selected").first()
 
     def mark_offer_selected_now(self, employee):
-        """تحديثات موحّدة عند تحديد العرض/الإسناد (يضبط الـ SLA)."""
+        """
+        تحديثات موحّدة عند تحديد العرض/الإسناد (يضبط الـ SLA).
+        تستدعى من view اختيار العرض (بداخل transaction.atomic).
+        """
         self.assigned_employee = employee
         self.status = self.Status.OFFER_SELECTED
         now = timezone.now()
@@ -100,10 +132,8 @@ class Request(models.Model):
         # استيراد متأخر لتفادي الحلقة المرجعية داخل الملف
         from .models import Offer
         with transaction.atomic():
-            # رفض كل العروض باستثناء المرفوضة أصلاً للحفاظ على الاتساق
             Offer.objects.filter(request=self).exclude(status=Offer.Status.REJECTED)\
                 .update(status=Offer.Status.REJECTED)
-            # إعادة الضبط
             self.assigned_employee = None
             self.status = self.Status.NEW
             self.offer_selected_at = None
@@ -148,7 +178,7 @@ class Request(models.Model):
 
 
 class Offer(models.Model):
-    # لإصلاح التوافق مع الإشارات والفيوز: TextChoices + alias قديم
+    # حالات العرض
     class Status(models.TextChoices):
         PENDING = "pending", "قيد المراجعة"
         SELECTED = "selected", "العرض المختار"
@@ -169,12 +199,20 @@ class Offer(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        # ضمان وجود عرض مختار واحد فقط لكل طلب (شرطي)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["request"],
+                condition=Q(status="selected"),
+                name="uq_request_single_selected_offer",
+            )
+        ]
 
     # صلاحيات
     def can_view(self, user):
         if not getattr(user, "is_authenticated", False):
             return False
-        if getattr(user, "is_staff", False) or getattr(user, "role", "") in ("admin", "manager", "finance"):
+        if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False) or getattr(user, "role", "") in ("admin", "manager", "finance"):
             return True
         return user.id in (self.request.client_id, self.employee_id)
 
@@ -192,6 +230,12 @@ class Offer(models.Model):
             and user.id == self.request.client_id
             and self.status == self.Status.PENDING
         )
+
+    def clean(self):
+        if self.proposed_duration_days == 0:
+            raise ValidationError("المدة المقترحة يجب أن تكون أكبر من صفر.")
+        if self.proposed_price < 0:
+            raise ValidationError("السعر المقترح لا يمكن أن يكون سالبًا.")
 
     def __str__(self):
         return f"Offer#{self.pk} R{self.request_id} by {self.employee}"

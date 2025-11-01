@@ -10,7 +10,7 @@
 
   <link rel="icon" href="{% static 'favicon.ico' %}" />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-KY4t3..." crossorigin="anonymous" referrerpolicy="no-referrer"/>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -40,22 +40,68 @@
   </script>
 
   <style>
-    html { color-scheme: light dark; scroll-behavior: smooth; }
-    body { transition: background-color .3s, color .3s; }
-    .container-xl { max-width: 1240px; }
+    html{ color-scheme: light dark; scroll-behavior:smooth }
+    body{ transition: background-color .3s, color .3s }
+    .container-xl{ max-width:1240px }
 
-    .input { @apply w-full rounded-xl border border-slate-200 dark:border-slate-700 p-3 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white transition-colors; }
+    /* بديل @apply مع CDN */
+    .input{
+      width:100%; border-radius:0.75rem; padding:0.75rem;
+      border:1px solid rgba(226,232,240,1);
+      background:#fff; color:#0f172a; transition:box-shadow .2s,border-color .2s;
+    }
+    .dark .input{ background:#0f172a; color:#fff; border-color:#334155 }
+    .input:focus{ outline:0; box-shadow:0 0 0 3px rgba(14,165,233,.35); border-color:#38bdf8 }
 
-    .nav-link { @apply px-4 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium; }
-    .nav-cta  { @apply px-5 py-2.5 rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 transition-all duration-300 shadow-md hover:shadow-lg font-medium; }
-    .active   { @apply bg-primary-50 text-primary-800 dark:bg-primary-900/20 dark:text-primary-200 ring-1 ring-primary-200; }
+    .nav-link{
+      display:flex; align-items:center; gap:.5rem;
+      padding:.625rem 1rem; border-radius:1rem; font-weight:600;
+      color:#334155; transition:background-color .2s,color .2s;
+    }
+    .dark .nav-link{ color:#cbd5e1 }
+    .nav-link:hover{ background:#f1f5f9 }
+    .dark .nav-link:hover{ background:#0f172a }
 
-    .glass-effect { @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200/50 dark:border-slate-700/50; }
-    .card { @apply bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300 hover:shadow-md; }
-    .gradient-text { @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent; }
-    .header-scrolled { @apply shadow-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg; }
+    .nav-cta{
+      padding:.625rem 1.25rem; border-radius:1rem; color:#fff; font-weight:600;
+      background-image:linear-gradient(to right,#0284c7,#0369a1);
+      box-shadow:0 10px 15px -3px rgba(2,132,199,.15);
+      transition:filter .2s,transform .2s;
+    }
+    .nav-cta:hover{ filter:brightness(.98) }
 
-    .notif-dot { position:absolute; inset-inline-start:.15rem; top:.15rem; }
+    .active{
+      background:rgba(14,165,233,.08); color:#075985;
+      box-shadow:0 0 0 1px rgba(14,165,233,.35) inset;
+    }
+    .dark .active{ background:rgba(14,165,233,.12); color:#e0f2fe }
+
+    .glass-effect{
+      background:rgba(255,255,255,.8); backdrop-filter:blur(12px);
+      border-bottom:1px solid rgba(226,232,240,.5);
+    }
+    .dark .glass-effect{
+      background:rgba(2,6,23,.8); border-bottom:1px solid rgba(51,65,85,.5);
+    }
+    .card{
+      background:#fff; border:1px solid #e2e8f0; border-radius:1rem;
+      overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:box-shadow .2s,transform .2s;
+    }
+    .dark .card{ background:#0f172a; border-color:#334155 }
+    .card:hover{ box-shadow:0 10px 15px -3px rgba(0,0,0,.1) }
+
+    .gradient-text{ background:linear-gradient(to right,#0284c7,#075985); -webkit-background-clip:text; background-clip:text; color:transparent }
+    .header-scrolled{ box-shadow:0 10px 15px -10px rgba(0,0,0,.15); background:rgba(255,255,255,.95); backdrop-filter:blur(12px) }
+    .dark .header-scrolled{ background:rgba(2,6,23,.95) }
+
+    .alert-message{
+      border-radius:0.75rem; padding:0.75rem 1rem; background:#f1f5f9; color:#0f172a; margin-bottom:.5rem
+    }
+    .dark .alert-message{ background:#0b1220; color:#cbd5e1 }
+    .alert-success{ background:#ecfdf5; color:#065f46 }
+    .alert-error{ background:#fef2f2; color:#991b1b }
+    .alert-warning{ background:#fffbeb; color:#92400e }
+    .notif-dot{ position:absolute; inset-inline-start:.15rem; top:.15rem }
   </style>
 
   {% block extra_head %}{% endblock %}
@@ -84,62 +130,63 @@
 
         <!-- Desktop Nav -->
         <nav class="hidden lg:flex items-center gap-5 xl:gap-7">
-          {% with nm=request.resolver_match.url_name ns=request.resolver_match.namespace %}
-            <a href="{% url 'website:home' %}" class="nav-link {% if ns == 'website' and nm == 'home' %}active{% endif %}">
-              <i class="fas fa-home text-sm"></i><span>الرئيسية</span>
-            </a>
-            <a href="{% url 'website:services' %}" class="nav-link {% if ns == 'website' and nm == 'services' %}active{% endif %}">
-              <i class="fas fa-cogs text-sm"></i><span>الخدمات</span>
-            </a>
-            <a href="{% url 'profiles:employees_list' %}" class="nav-link {% if ns == 'profiles' %}active{% endif %}">
-              <i class="fas a-users text-sm"></i><span>دليل الفريق</span>
-            </a>
+          {% with rm=request.resolver_match %}
+            {% with nm=rm.url_name ns=rm.namespace %}
+              <a href="{% url 'website:home' %}" class="nav-link {% if ns == 'website' and nm == 'home' %}active{% endif %}">
+                <i class="fas fa-home text-sm"></i><span>الرئيسية</span>
+              </a>
+              <a href="{% url 'website:services' %}" class="nav-link {% if ns == 'website' and nm == 'services' %}active{% endif %}">
+                <i class="fas fa-cogs text-sm"></i><span>الخدمات</span>
+              </a>
+              <a href="{% url 'profiles:employees_list' %}" class="nav-link {% if ns == 'profiles' %}active{% endif %}">
+                <i class="fas fa-users text-sm"></i><span>دليل الفريق</span>
+              </a>
 
-            {% if request.user.is_authenticated %}
-              {% if request.user.role == 'client' %}
-                <a href="{% url 'marketplace:request_create' %}" class="nav-link {% if nm == 'request_create' %}active{% endif %}">
-                  <i class="fas fa-plus-circle text-sm"></i><span>طلب جديد</span>
-                </a>
-                <a href="{% url 'marketplace:my_requests' %}" class="nav-link {% if nm == 'my_requests' %}active{% endif %}">
-                  <i class="fas fa-list-alt text-sm"></i><span>طلباتي</span>
-                </a>
-                <a href="{% url 'finance:client_payments' %}" class="nav-link {% if ns == 'finance' and nm == 'client_payments' %}active{% endif %}">
-                  <i class="fas fa-wallet text-sm"></i><span>مدفوعاتي</span>
-                </a>
-              {% endif %}
+              {% if request.user.is_authenticated %}
+                {% if request.user.role == 'client' %}
+                  <a href="{% url 'marketplace:request_create' %}" class="nav-link {% if nm == 'request_create' %}active{% endif %}">
+                    <i class="fas fa-plus-circle text-sm"></i><span>طلب جديد</span>
+                  </a>
+                  <a href="{% url 'marketplace:my_requests' %}" class="nav-link {% if nm == 'my_requests' %}active{% endif %}">
+                    <i class="fas fa-list-alt text-sm"></i><span>طلباتي</span>
+                  </a>
+                  <a href="{% url 'finance:client_payments' %}" class="nav-link {% if ns == 'finance' and nm == 'client_payments' %}active{% endif %}">
+                    <i class="fas fa-wallet text-sm"></i><span>مدفوعاتي</span>
+                  </a>
+                {% endif %}
 
-              {% if request.user.role == 'employee' %}
-                <a href="{% url 'marketplace:new_requests' %}" class="nav-link {% if nm == 'new_requests' %}active{% endif %}">
-                  <i class="fas fa-bell text-sm"></i><span>الطلبات الجديدة</span>
-                </a>
-                <a href="{% url 'marketplace:my_tasks' %}" class="nav-link {% if nm == 'my_tasks' %}active{% endif %}">
-                  <i class="fas fa-tasks text-sm"></i><span>مهامي</span>
-                </a>
-                <a href="{% url 'finance:employee_dues' %}" class="nav-link {% if ns == 'finance' and nm == 'employee_dues' %}active{% endif %}">
-                  <i class="fas fa-receipt text-sm"></i><span>مستحقاتي</span>
-                </a>
-              {% endif %}
+                {% if request.user.role == 'employee' %}
+                  <a href="{% url 'marketplace:new_requests' %}" class="nav-link {% if nm == 'new_requests' %}active{% endif %}">
+                    <i class="fas fa-bell text-sm"></i><span>الطلبات الجديدة</span>
+                  </a>
+                  <a href="{% url 'marketplace:my_tasks' %}" class="nav-link {% if nm == 'my_tasks' %}active{% endif %}">
+                    <i class="fas fa-tasks text-sm"></i><span>مهامي</span>
+                  </a>
+                  <a href="{% url 'finance:employee_dues' %}" class="nav-link {% if ns == 'finance' and nm == 'employee_dues' %}active{% endif %}">
+                    <i class="fas fa-receipt text-sm"></i><span>مستحقاتي</span>
+                  </a>
+                {% endif %}
 
-              {% if request.user.role == 'finance' or request.user.is_staff or request.user.is_superuser %}
-                <a href="{% url 'finance:home' %}" class="nav-link {% if ns == 'finance' and nm == 'home' %}active{% endif %}">
-                  <i class="fas fa-chart-line text-sm"></i><span>لوحة المالية</span>
-                </a>
-                <a href="{% url 'finance:collections_report' %}" class="nav-link {% if ns == 'finance' and nm == 'collections_report' %}active{% endif %}">
-                  <i class="fas fa-chart-pie text-sm"></i><span>تقرير التحصيل</span>
-                </a>
-              {% endif %}
+                {% if request.user.role == 'finance' or request.user.is_staff or request.user.is_superuser %}
+                  <a href="{% url 'finance:home' %}" class="nav-link {% if ns == 'finance' and nm == 'home' %}active{% endif %}">
+                    <i class="fas fa-chart-line text-sm"></i><span>لوحة المالية</span>
+                  </a>
+                  <a href="{% url 'finance:collections_report' %}" class="nav-link {% if ns == 'finance' and nm == 'collections_report' %}active{% endif %}">
+                    <i class="fas fa-chart-pie text-sm"></i><span>تقرير التحصيل</span>
+                  </a>
+                {% endif %}
 
-              {% if request.user.role == 'admin' %}
-                <a href="/admin/" class="nav-link"><i class="fas fa-cog text-sm"></i><span>لوحة الإدارة</span></a>
+                {% if request.user.role == 'admin' %}
+                  <a href="/admin/" class="nav-link"><i class="fas fa-cog text-sm"></i><span>لوحة الإدارة</span></a>
+                {% endif %}
               {% endif %}
-            {% endif %}
+            {% endwith %}
           {% endwith %}
         </nav>
 
         <!-- User/Auth + Notifications (جرس فقط) -->
         <div class="flex items-center gap-4">
           {% if request.user.is_authenticated %}
-            <!-- Bell only: link to notifications page (نستخدم المسار المباشر لتجنّب مشاكل namespace) -->
             <a href="/notifications/" class="relative p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors" aria-label="الإشعارات">
               <i class="fas fa-bell text-slate-700 dark:text-slate-300 text-[18px]"></i>
               <span id="notifCount" class="notif-dot hidden min-w-[20px] h-[20px] text-[11px] leading-[20px] text-center rounded-full bg-red-600 text-white font-semibold"></span>
@@ -149,10 +196,12 @@
             <div class="relative">
               <button id="userMenuBtn" class="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 border border-slate-200 dark:border-slate-700">
                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 grid place-items-center text-white text-sm font-medium shadow-sm">
-                  {% if request.user.name %}{{ request.user.name|first }}{% else %}{{ request.user.email|first }}{% endif %}
+                  {% if request.user.name %}{{ request.user.name|slice:":1"|upper }}{% else %}{{ request.user.email|slice:":1"|upper }}{% endif %}
                 </div>
                 <div class="text-right hidden md:block">
-                  <div class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ request.user.name|default:request.user.email|truncatechars:20 }}</div>
+                  <div class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {{ request.user.name|default:request.user.email|truncatechars:20 }}
+                  </div>
                   <div class="text-xs text-slate-500 dark:text-slate-400 capitalize">{{ request.user.role }}</div>
                 </div>
                 <i class="fas fa-chevron-down text-xs transition-transform duration-200 text-slate-500"></i>
@@ -280,14 +329,14 @@
       {% if messages %}
         {% for message in messages %}
           <div class="alert-message {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} flex items-start" data-duration="4000">
-            <div class="flex items-start flex-1">
-              {% if message.tags == 'success' %}<i class="fas fa-check-circle mr-2 mt-0.5"></i>
-              {% elif message.tags == 'error' %}<i class="fas fa-exclamation-circle mr-2 mt-0.5"></i>
-              {% elif message.tags == 'warning' %}<i class="fas fa-exclamation-triangle mr-2 mt-0.5"></i>
-              {% else %}<i class="fas fa-info-circle mr-2 mt-0.5"></i>{% endif %}
+            <div class="flex items-start flex-1 gap-2">
+              {% if message.tags == 'success' %}<i class="fas fa-check-circle mt-0.5"></i>
+              {% elif message.tags == 'error' %}<i class="fas fa-exclamation-circle mt-0.5"></i>
+              {% elif message.tags == 'warning' %}<i class="fas fa-exclamation-triangle mt-0.5"></i>
+              {% else %}<i class="fas fa-info-circle mt-0.5"></i>{% endif %}
               <div class="flex-1">{{ message }}</div>
             </div>
-            <button class="ml-3 text-lg opacity-70 hover:opacity-100 transition-opacity" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+            <button class="ms-3 text-lg opacity-70 hover:opacity-100 transition-opacity" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
           </div>
         {% endfor %}
       {% endif %}
@@ -306,7 +355,7 @@
         </div>
         <p class="text-slate-600 dark:text-slate-400 text-sm max-w-md">منصّة مؤسسية متكاملة لإدارة الخدمات التقنية: طلبات، عروض، اتفاقيات، مراحل، فواتير، ونزاعات—بكل احترافية وكفاءة.</p>
         <div class="flex gap-3 mt-4">
-          <a href="#" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 hover:text-primary-600 transition-colors"><i class="fab fa-twitter"></i></a>
+          <a href="#" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 hover:text-primary-600 transition-colors"><i class="fab fa-x-twitter"></i></a>
           <a href="#" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 hover:text-primary-600 transition-colors"><i class="fab fa-linkedin-in"></i></a>
         </div>
       </div>
@@ -403,11 +452,9 @@
         });
       })();
 
-      // ========= إشعارات (Badge فقط) =========
+      // إشعارات (Badge فقط)
       const notifCount = document.getElementById('notifCount');
-      window.NOTIF_ENDPOINTS = window.NOTIF_ENDPOINTS || {
-        unread: '/notifications/api/unread-count'
-      };
+      window.NOTIF_ENDPOINTS = window.NOTIF_ENDPOINTS || { unread: '/notifications/api/unread-count' };
 
       function setCount(n) {
         if (!notifCount) return;

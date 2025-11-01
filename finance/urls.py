@@ -9,6 +9,7 @@ urlpatterns = [
     path("in-progress/", views.inprogress_requests, name="inprogress"),
     path("agreement/<int:agreement_id>/invoices/", views.agreement_invoices, name="agreement_invoices"),
     path("invoice/<int:pk>/paid/", views.mark_invoice_paid, name="mark_invoice_paid"),
+    path("invoice/<int:pk>/", views.invoice_detail, name="invoice_detail"),
 
     # جديد
     path("reports/collections/", views.collections_report, name="collections_report"),

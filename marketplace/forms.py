@@ -1,29 +1,37 @@
 # marketplace/forms.py
+from __future__ import annotations
+
 from django import forms
 from django.contrib.auth import get_user_model
-from django.utils.text import Truncator
 from django.utils.html import strip_tags
+from django.utils.text import Truncator
 
 from .models import Request, Offer, Note
 
 User = get_user_model()
 
 
-def _clean_text(v: str) -> str:
+# ---------------------------------------------
+# أدوات تنظيف نصوص آمنة
+# ---------------------------------------------
+def _clean_text(v: str | None) -> str:
     """
     تنظيف بسيط وآمن للنصوص:
-    - إزالة HTML لمنع أي إدراج غير مقصود.
-    - تقليم المسافات الزائدة.
+    - إزالة HTML لمنع XSS في الحقول النصية.
+    - تقليم المسافات الزائدة وطيّها.
+    - يعيد سلسلة فارغة عند None.
     """
     if v is None:
-        return v
+        return ""
     v = strip_tags(v)
     v = " ".join(v.split())
     return v
 
 
+# ---------------------------------------------
+# نموذج إنشاء طلب (العميل)
+# ---------------------------------------------
 class RequestCreateForm(forms.ModelForm):
-    """نموذج إنشاء طلب للعميل."""
     class Meta:
         model = Request
         fields = ["title", "details", "estimated_duration_days", "estimated_price", "links"]
@@ -35,24 +43,27 @@ class RequestCreateForm(forms.ModelForm):
             "links": "روابط (اختياري)",
         }
         widgets = {
-            "title": forms.TextInput(attrs={"class": "input", "placeholder": "عنوان الطلب"}),
+            "title": forms.TextInput(attrs={"class": "input", "placeholder": "عنوان الطلب", "maxlength": 160}),
             "details": forms.Textarea(attrs={"class": "input", "rows": 5, "placeholder": "وصف مختصر للعمل المطلوب"}),
             "estimated_duration_days": forms.NumberInput(attrs={"class": "input", "min": 1}),
             "estimated_price": forms.NumberInput(attrs={"class": "input", "step": "0.01", "min": 0}),
-            "links": forms.Textarea(attrs={"class": "input", "rows": 2, "placeholder": "روابط (اختياري)"}),
+            "links": forms.Textarea(attrs={"class": "input", "rows": 2, "placeholder": "روابط (اختياري)", "maxlength": 2000}),
+        }
+        help_texts = {
+            "links": "ضع سطرًا لكل رابط إن وُجد (GitHub, Drive, Figma…).",
         }
 
-    def clean_title(self):
-        title = _clean_text(self.cleaned_data.get("title", "")).strip()
+    def clean_title(self) -> str:
+        title = _clean_text(self.cleaned_data.get("title"))
         if not title:
             raise forms.ValidationError("يرجى إدخال عنوان الطلب.")
         return Truncator(title).chars(160)
 
-    def clean_details(self):
-        details = _clean_text(self.cleaned_data.get("details", "")).strip()
+    def clean_details(self) -> str:
+        details = _clean_text(self.cleaned_data.get("details"))
         return Truncator(details).chars(5000)
 
-    def clean_estimated_duration_days(self):
+    def clean_estimated_duration_days(self) -> int:
         days = self.cleaned_data.get("estimated_duration_days")
         if not days or days < 1:
             raise forms.ValidationError("المدة التقديرية يجب أن تكون رقمًا موجبًا.")
@@ -64,16 +75,19 @@ class RequestCreateForm(forms.ModelForm):
             raise forms.ValidationError("السعر التقريبي يجب أن يكون صفرًا أو رقمًا موجبًا.")
         return price
 
-    def clean_links(self):
-        links = (self.cleaned_data.get("links") or "").strip()
-        return Truncator(strip_tags(links)).chars(2000)
+    def clean_links(self) -> str:
+        links = _clean_text(self.cleaned_data.get("links"))
+        return Truncator(links).chars(2000)
 
 
+# ---------------------------------------------
+# نموذج تقديم عرض (الموظف)
+# ---------------------------------------------
 class OfferCreateForm(forms.ModelForm):
     """
-    نموذج تقديم العرض من الموظف.
-    أبقيناه كما هو ولكن عدّلنا الحقول لتتوافق مع الموديل (note بدل text).
-    سيتم ضبط instance.request و instance.employee في OfferCreateView أو في RequestDetailView.post.
+    - يعتمد على ضبط instance.request و instance.employee من الـ view.
+    - بديلًا عن ذلك، يقبل kwargs: request=..., employee=... ليضبطهما آمنًا.
+    - يمنع تقديم أكثر من عرض (PENDING) لنفس (request, employee).
     """
     class Meta:
         model = Offer
@@ -89,13 +103,23 @@ class OfferCreateForm(forms.ModelForm):
             "proposed_price": forms.NumberInput(attrs={"class": "input", "step": "0.01", "min": 0}),
         }
 
-    def clean_note(self):
-        text = _clean_text(self.cleaned_data.get("note", "")).strip()
+    # دعم تمرير request/employee عبر kwargs للراحة
+    def __init__(self, *args, **kwargs):
+        req = kwargs.pop("request_obj", None)  # لتفادي ظل اسم request الخاص بـ HttpRequest
+        emp = kwargs.pop("employee_obj", None)
+        super().__init__(*args, **kwargs)
+        if req is not None:
+            self.instance.request = req
+        if emp is not None:
+            self.instance.employee = emp
+
+    def clean_note(self) -> str:
+        text = _clean_text(self.cleaned_data.get("note"))
         if not text:
             raise forms.ValidationError("يرجى كتابة تفاصيل العرض.")
         return Truncator(text).chars(5000)
 
-    def clean_proposed_duration_days(self):
+    def clean_proposed_duration_days(self) -> int:
         days = self.cleaned_data.get("proposed_duration_days")
         if not days or days < 1:
             raise forms.ValidationError("المدة المقترحة يجب أن تكون رقمًا موجبًا.")
@@ -109,20 +133,28 @@ class OfferCreateForm(forms.ModelForm):
 
     def clean(self):
         """
-        منع الموظف من تقديم أكثر من عرض واحد لنفس الطلب (تحقق مبكر).
-        يعتمد على أن الـ view عيّن instance.request و instance.employee مسبقًا.
+        منع الموظف من تقديم أكثر من عرض (PENDING) لنفس الطلب.
+        يعتمد على ضبط instance.request و instance.employee قبل الاستدعاء.
         """
         cleaned = super().clean()
         req = getattr(self.instance, "request", None)
         emp = getattr(self.instance, "employee", None)
         if req and emp:
-            if Offer.objects.filter(request=req, employee=emp, status__in=(Offer.Status.PENDING,)).exists():
-                raise forms.ValidationError("لا يمكنك تقديم أكثر من عرض واحد لهذا الطلب.")
+            # نسمح بعرض واحد PENDING؛ العروض المرفوضة/الملغية لا تمنع تقديم عرض جديد
+            exists = Offer.objects.filter(
+                request=req,
+                employee=emp,
+                status=getattr(Offer.Status, "PENDING", "pending"),
+            ).exists()
+            if exists:
+                raise forms.ValidationError("لا يمكنك تقديم أكثر من عرض واحد قيد الانتظار لهذا الطلب.")
         return cleaned
 
 
+# ---------------------------------------------
+# ملاحظات على الطلب (نقاش رسمي)
+# ---------------------------------------------
 class NoteForm(forms.ModelForm):
-    """نموذج الملاحظات داخل الطلب (نقاش رسمي)."""
     class Meta:
         model = Note
         fields = ["text", "is_internal"]
@@ -131,46 +163,59 @@ class NoteForm(forms.ModelForm):
             "text": forms.Textarea(attrs={"class": "input", "rows": 3, "placeholder": "أضف ملاحظة"}),
         }
 
-    def clean_text(self):
-        text = _clean_text(self.cleaned_data.get("text", "")).strip()
+    def clean_text(self) -> str:
+        text = _clean_text(self.cleaned_data.get("text"))
         if not text:
             raise forms.ValidationError("يرجى كتابة نص الملاحظة.")
         return Truncator(text).chars(5000)
 
-# --- النموذج الثاني الذي كان موجودًا لديك: أبقيناه كما هو مع توافق الحقول ---
-from django import forms as _forms_alias  # لتفادي أي التباس مع الاستيراد أعلاه
 
-class OfferForm(_forms_alias.ModelForm):
+# ---------------------------------------------
+# نموذج عرض بديل (موجود عندك سابقًا) – أبقيناه متوافقًا
+# ---------------------------------------------
+class OfferForm(forms.ModelForm):
     class Meta:
         model = Offer
         fields = ["proposed_duration_days", "proposed_price", "note"]
         widgets = {
-            "proposed_duration_days": _forms_alias.NumberInput(attrs={"min": 1, "class": "input", "placeholder": "المدة بالأيام"}),
-            "proposed_price": _forms_alias.NumberInput(attrs={"min": 1, "step": "0.5", "class": "input", "placeholder": "المبلغ بالريال"}),
-            "note": _forms_alias.Textarea(attrs={"rows": 3, "class": "input", "placeholder": "تفاصيل العرض (اختياري)"}),
+            "proposed_duration_days": forms.NumberInput(
+                attrs={"min": 1, "class": "input", "placeholder": "المدة بالأيام"}
+            ),
+            "proposed_price": forms.NumberInput(
+                attrs={"min": 1, "step": "0.5", "class": "input", "placeholder": "المبلغ بالريال"}
+            ),
+            "note": forms.Textarea(
+                attrs={"rows": 3, "class": "input", "placeholder": "تفاصيل العرض (اختياري)"}
+            ),
         }
 
     def clean_proposed_duration_days(self):
         v = self.cleaned_data["proposed_duration_days"]
         if v < 1 or v > 365:
-            raise _forms_alias.ValidationError("المدة يجب أن تكون بين 1 و 365 يومًا.")
+            raise forms.ValidationError("المدة يجب أن تكون بين 1 و 365 يومًا.")
         return v
 
     def clean_proposed_price(self):
         v = self.cleaned_data["proposed_price"]
-        if v <= 0:
-            raise _forms_alias.ValidationError("المبلغ يجب أن يكون أكبر من صفر.")
+        if v is None or v <= 0:
+            raise forms.ValidationError("المبلغ يجب أن يكون أكبر من صفر.")
         return v
 
 
-# marketplace/forms.py  (أضِف في آخر الملف مثلاً)
-from django.contrib.auth import get_user_model
-from django import forms as _admin_forms
-
-class AdminReassignForm(_admin_forms.Form):
+# ---------------------------------------------
+# نموذج إداري: إعادة إسناد موظف للطلب
+# ---------------------------------------------
+class AdminReassignForm(forms.Form):
     """اختيار موظف لإعادة الإسناد (admin-only)."""
-    employee = _admin_forms.ModelChoiceField(
-        queryset=get_user_model().objects.filter(role="employee"),
+    employee = forms.ModelChoiceField(
+        queryset=User.objects.none(),  # نضبطه في __init__ لضمان فلترة صحيحة
         label="الموظف الجديد",
-        widget=_admin_forms.Select(attrs={"class": "input"})
+        widget=forms.Select(attrs={"class": "input"}),
+        help_text="يظهر فقط المستخدمون بدور 'employee' وفعّالون.",
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["employee"].queryset = User.objects.filter(
+            role="employee", is_active=True
+        ).order_by("name", "email")

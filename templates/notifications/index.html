@@ -3,6 +3,7 @@
 {% block title %}الإشعارات{% endblock %}
 
 {% block content %}
+{% with q=request.GET.q|default_if_none:"" status=request.GET.status|default_if_none:"" ps=request.GET.page_size|default:"20" %}
 <section class="rtl" dir="rtl">
   <div class="max-w-6xl mx-auto">
 
@@ -12,31 +13,29 @@
         <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">الإشعارات</h1>
         <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">كل تنبيهاتك في مكان واحد — يمكنك البحث والفرز وتعليمها كمقروء.</p>
       </div>
+
       <div class="flex items-center gap-2">
-        <form action="" method="get" class="hidden sm:flex items-center gap-2">
-          <input type="text" name="q" value="{{ request.GET.q }}" placeholder="ابحث بالعنوان أو النص..."
-                 class="input !py-2 !px-3 w-56" />
+        <!-- شريط البحث (سطح مكتب) -->
+        <form action="" method="get" class="hidden sm:flex items-center gap-2" role="search" aria-label="فلترة الإشعارات">
+          <input type="text" name="q" value="{{ q }}" placeholder="ابحث بالعنوان أو النص..." class="input !py-2 !px-3 w-56" />
           <select name="status" class="input !py-2 !px-3 w-36">
-            <option value="" {% if not request.GET.status %}selected{% endif %}>الكل</option>
-            <option value="unread" {% if request.GET.status == 'unread' %}selected{% endif %}>غير مقروءة</option>
-            <option value="read" {% if request.GET.status == 'read' %}selected{% endif %}>مقروءة</option>
+            <option value="" {% if not status %}selected{% endif %}>الكل</option>
+            <option value="unread" {% if status == 'unread' %}selected{% endif %}>غير مقروءة</option>
+            <option value="read" {% if status == 'read' %}selected{% endif %}>مقروءة</option>
           </select>
-          <!-- بدلاً من split داخل القالب: خيارات ثابتة -->
           <select name="page_size" class="input !py-2 !px-3 w-28">
-            {% with ps=request.GET.page_size|default:"20" %}
-              <option value="10"  {% if ps == "10" %}selected{% endif %}>10</option>
-              <option value="20"  {% if ps == "20" %}selected{% endif %}>20</option>
-              <option value="30"  {% if ps == "30" %}selected{% endif %}>30</option>
-              <option value="50"  {% if ps == "50" %}selected{% endif %}>50</option>
-              <option value="100" {% if ps == "100" %}selected{% endif %}>100</option>
-            {% endwith %}
+            <option value="10"  {% if ps == "10" %}selected{% endif %}>10</option>
+            <option value="20"  {% if ps == "20" %}selected{% endif %}>20</option>
+            <option value="30"  {% if ps == "30" %}selected{% endif %}>30</option>
+            <option value="50"  {% if ps == "50" %}selected{% endif %}>50</option>
+            <option value="100" {% if ps == "100" %}selected{% endif %}>100</option>
           </select>
           <button class="nav-cta !py-2.5">تطبيق</button>
         </form>
 
         <!-- زر تعليم الكل -->
         <form action="{% url 'notifications:api_mark_all_read' %}" method="post"
-              onsubmit="return confirm('تعليم جميع الإشعارات كمقروءة؟');">
+              onsubmit="return confirm('تعليم جميع الإشعارات كمقروءة؟');" class="ml-2">
           {% csrf_token %}
           <button class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
             تعليم الكل كمقروء
@@ -46,22 +45,19 @@
     </div>
 
     <!-- فورم البحث (موبايل) -->
-    <form action="" method="get" class="sm:hidden grid grid-cols-2 gap-2 mb-4">
-      <input type="text" name="q" value="{{ request.GET.q }}" placeholder="ابحث..."
-             class="input !py-2 !px-3 col-span-2" />
+    <form action="" method="get" class="sm:hidden grid grid-cols-2 gap-2 mb-4" role="search" aria-label="فلترة الإشعارات">
+      <input type="text" name="q" value="{{ q }}" placeholder="ابحث..." class="input !py-2 !px-3 col-span-2" />
       <select name="status" class="input !py-2 !px-3">
-        <option value="" {% if not request.GET.status %}selected{% endif %}>الكل</option>
-        <option value="unread" {% if request.GET.status == 'unread' %}selected{% endif %}>غير مقروءة</option>
-        <option value="read" {% if request.GET.status == 'read' %}selected{% endif %}>مقروءة</option>
+        <option value="" {% if not status %}selected{% endif %}>الكل</option>
+        <option value="unread" {% if status == 'unread' %}selected{% endif %}>غير مقروءة</option>
+        <option value="read" {% if status == 'read' %}selected{% endif %}>مقروءة</option>
       </select>
       <select name="page_size" class="input !py-2 !px-3">
-        {% with ps=request.GET.page_size|default:"20" %}
-          <option value="10"  {% if ps == "10" %}selected{% endif %}>10</option>
-          <option value="20"  {% if ps == "20" %}selected{% endif %}>20</option>
-          <option value="30"  {% if ps == "30" %}selected{% endif %}>30</option>
-          <option value="50"  {% if ps == "50" %}selected{% endif %}>50</option>
-          <option value="100" {% if ps == "100" %}selected{% endif %}>100</option>
-        {% endwith %}
+        <option value="10"  {% if ps == "10" %}selected{% endif %}>10</option>
+        <option value="20"  {% if ps == "20" %}selected{% endif %}>20</option>
+        <option value="30"  {% if ps == "30" %}selected{% endif %}>30</option>
+        <option value="50"  {% if ps == "50" %}selected{% endif %}>50</option>
+        <option value="100" {% if ps == "100" %}selected{% endif %}>100</option>
       </select>
       <button class="nav-cta !py-2.5 col-span-2">تطبيق</button>
     </form>
@@ -75,17 +71,19 @@
             <div class="flex items-start gap-4">
               <div class="w-11 h-11 shrink-0 grid place-items-center rounded-xl
                           {% if n.is_read %}bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300
-                          {% else %}bg-primary-600 text-white{% endif %}">
+                          {% else %}bg-primary-600 text-white{% endif %}"
+                   aria-hidden="true">
                 <i class="fas fa-bell"></i>
               </div>
 
               <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
                   <h3 class="font-semibold text-slate-900 dark:text-white truncate">{{ n.title|default:"إشعار" }}</h3>
+                  {% if n.level %}<span class="text-xs px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-700">{{ n.level }}</span>{% endif %}
                   {% if not n.is_read %}
-                    <span class="badge badge-primary">غير مقروء</span>
+                    <span class="text-xs px-2 py-1 rounded-lg bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-200">غير مقروء</span>
                   {% else %}
-                    <span class="badge badge-secondary">مقروء</span>
+                    <span class="text-xs px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-700">مقروء</span>
                   {% endif %}
                 </div>
 
@@ -101,7 +99,8 @@
 
                 <div class="mt-3 flex flex-wrap items-center gap-2">
                   {% if n.url %}
-                    <a href="{{ n.url }}" class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition">فتح</a>
+                    <a href="{{ n.url }}" target="_blank" rel="noopener noreferrer"
+                       class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition">فتح</a>
                   {% endif %}
 
                   {% if not n.is_read %}
@@ -124,19 +123,18 @@
       {% endif %}
     </div>
 
-    <!-- ترقيم الصفحات -->
+    <!-- ترقيم الصفحات (مبسّط بدون with متداخلة) -->
     {% if is_paginated %}
     <div class="mt-6 flex items-center justify-between flex-wrap gap-3">
       <div class="text-sm text-slate-600 dark:text-slate-300">
-        الصفحة {{ page_obj.number }} من {{ paginator.num_pages }}
-        — إجمالي: {{ paginator.count }}
+        الصفحة {{ page_obj.number }} من {{ paginator.num_pages }} — إجمالي: {{ paginator.count }}
       </div>
       <div class="flex items-center gap-2">
         {% if page_obj.has_previous %}
           <a class="px-3 py-2 rounded-xl border hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-             href="?{% if request.GET.q %}q={{ request.GET.q|urlencode }}&amp;{% endif %}
-                    {% if request.GET.status %}status={{ request.GET.status }}&amp;{% endif %}
-                    {% if request.GET.page_size %}page_size={{ request.GET.page_size }}&amp;{% endif %}
+             href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}
+                    {% if status %}status={{ status }}&amp;{% endif %}
+                    {% if ps %}page_size={{ ps }}&amp;{% endif %}
                     page={{ page_obj.previous_page_number }}">
             السابق
           </a>
@@ -146,9 +144,9 @@
 
         {% if page_obj.has_next %}
           <a class="px-3 py-2 rounded-xl border hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-             href="?{% if request.GET.q %}q={{ request.GET.q|urlencode }}&amp;{% endif %}
-                    {% if request.GET.status %}status={{ request.GET.status }}&amp;{% endif %}
-                    {% if request.GET.page_size %}page_size={{ request.GET.page_size }}&amp;{% endif %}
+             href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}
+                    {% if status %}status={{ status }}&amp;{% endif %}
+                    {% if ps %}page_size={{ ps }}&amp;{% endif %}
                     page={{ page_obj.next_page_number }}">
             التالي
           </a>
@@ -161,4 +159,5 @@
 
   </div>
 </section>
+{% endwith %}
 {% endblock %}

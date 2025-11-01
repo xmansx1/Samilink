@@ -6,7 +6,7 @@
 
   <div class="rounded-2xl border bg-white/80 dark:bg-slate-800/70 backdrop-blur shadow-glass-lg overflow-hidden">
 
-    {# ===== Toasts: رسائل النظام (Django messages) ===== #}
+    {# ===== Toasts ===== #}
     {% if messages %}
     <div class="p-4 border-b bg-gradient-to-l from-emerald-50 to-sky-50 dark:from-slate-800 dark:to-slate-900">
       <div class="space-y-2" id="messages-area">
@@ -49,39 +49,54 @@
         </div>
       </div>
 
-      {# ===== شريط إجراءات عام (فتح نزاع + تغيير الحالة) ===== #}
+      {# ===== شريط تقدّم الحالة ===== #}
+      <div class="mt-4">
+        <div class="flex items-center gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-lg border {% if req.status == 'new' or req.status == 'offer_selected' or req.status == 'agreement_pending' or req.status == 'in_progress' or req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">طلب</span>
+          <div class="h-px w-6 bg-slate-300 dark:bg-slate-700"></div>
+          <span class="px-2 py-1 rounded-lg border {% if req.status == 'offer_selected' or req.status == 'agreement_pending' or req.status == 'in_progress' or req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">عرض مختار</span>
+          <div class="h-px w-6 bg-slate-300 dark:bg-slate-700"></div>
+          <span class="px-2 py-1 rounded-lg border {% if req.status == 'agreement_pending' or req.status == 'in_progress' or req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">اتفاقية</span>
+          <div class="h-px w-6 bg-slate-300 dark:bg-slate-700"></div>
+          <span class="px-2 py-1 rounded-lg border {% if req.status == 'in_progress' or req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">تنفيذ/تسليم</span>
+          <div class="h-px w-6 bg-slate-300 dark:bg-slate-700"></div>
+          <span class="px-2 py-1 rounded-lg border {% if req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">إكمال</span>
+        </div>
+      </div>
+
+      {# ===== شريط إجراءات عام ===== #}
       {% if request.user.is_authenticated %}
         <div class="mt-4 flex flex-wrap items-center gap-2">
 
-          {# زر فتح نزاع: العميل أو الموظف المُسنَد أو المدير/ستاف #}
           {% if request.user.id == req.client_id or request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
             <a href="{% url 'disputes:open' req.pk %}" class="btn btn-danger">فتح نزاع</a>
           {% endif %}
 
-          {# تغيير حالة الطلب: الموظف المُسنَد أو المدير/ستاف #}
           {% if request.user.is_staff or request.user.role == 'admin' %}
             <div class="rounded-xl border bg-white/70 dark:bg-slate-900/40 p-2 flex flex-wrap items-center gap-2">
               <span class="text-xs text-slate-600 dark:text-slate-300">تغيير الحالة:</span>
-              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
-                    onsubmit="return confirm('سيتم تعليم الطلب كـ «بانتظار المراجعة». متابعة؟');">
+
+              <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}" class="inline"
+                    onsubmit="return confirm('سيتم تعليم الطلب «قيد التنفيذ». متابعة؟');">
                 {% csrf_token %}
-                <input type="hidden" name="state" value="awaiting_review">
-                <button class="btn btn-secondary btn-xs">بانتظار المراجعة</button>
-              </form>
-              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
-                    onsubmit="return confirm('إرجاع الطلب إلى «قيد التنفيذ»؟');">
-                {% csrf_token %}
-                <input type="hidden" name="state" value="in_progress">
+                <input type="hidden" name="status" value="in_progress">
                 <button class="btn btn-secondary btn-xs">قيد التنفيذ</button>
               </form>
-              {% if req.status == 'awaiting_payment' or req.state == 'awaiting_payment' %}
-              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
-                    onsubmit="return confirm('تعليم الطلب «مكتمل»؟');">
+
+              <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}" class="inline"
+                    onsubmit="return confirm('سيتم تعليم الطلب «بانتظار اتفاقية». متابعة؟');">
                 {% csrf_token %}
-                <input type="hidden" name="state" value="completed">
+                <input type="hidden" name="status" value="agreement_pending">
+                <button class="btn btn-secondary btn-xs">بانتظار اتفاقية</button>
+              </form>
+
+              <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}" class="inline"
+                    onsubmit="return confirm('تعليم الطلب «مكتمل» يدويًا؟ يُفضَّل اكتماله تلقائيًا بعد السداد.');">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="completed">
                 <button class="btn btn-success btn-xs">مكتمل</button>
               </form>
-              {% endif %}
+
               <form method="post" action="{% url 'marketplace:request_cancel' req.pk %}" class="inline flex items-center gap-2"
                     onsubmit="return !!this.querySelector('[name=reason]').value || (alert('فضلاً أدخل سبب الإلغاء.'), false)">
                 {% csrf_token %}
@@ -92,16 +107,10 @@
           {% elif request.user.id == req.assigned_employee_id %}
             <div class="rounded-xl border bg-white/70 dark:bg-slate-900/40 p-2 flex flex-wrap items-center gap-2">
               <span class="text-xs text-slate-600 dark:text-slate-300">تغيير الحالة:</span>
-              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
-                    onsubmit="return confirm('سيتم تعليم الطلب كـ «بانتظار المراجعة». متابعة؟');">
+              <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}" class="inline"
+                    onsubmit="return confirm('سيتم تعليم الطلب «قيد التنفيذ». متابعة؟');">
                 {% csrf_token %}
-                <input type="hidden" name="state" value="awaiting_review">
-                <button class="btn btn-secondary btn-xs">بانتظار المراجعة</button>
-              </form>
-              <form method="post" action="{% url 'marketplace:request_change_state' req.pk %}" class="inline"
-                    onsubmit="return confirm('إرجاع الطلب إلى «قيد التنفيذ»؟');">
-                {% csrf_token %}
-                <input type="hidden" name="state" value="in_progress">
+                <input type="hidden" name="status" value="in_progress">
                 <button class="btn btn-secondary btn-xs">قيد التنفيذ</button>
               </form>
             </div>
@@ -114,7 +123,7 @@
 
     <div class="p-6 space-y-6">
 
-      {# ===== لوحة تحكم المدير العام (admin-only) ===== #}
+      {# ===== لوحة تحكم المدير العام ===== #}
       {% if request.user.is_authenticated and request.user.role == 'admin' or request.user.is_authenticated and request.user.is_staff %}
         <div class="rounded-xl border bg-amber-50 dark:bg-amber-900/20 p-4">
           <div class="flex items-center justify-between gap-3">
@@ -142,7 +151,7 @@
         </div>
       {% endif %}
 
-      {# 🟦 تقديم عرض (موظف لم يقدّم عرضًا بعد) #}
+      {# 🟦 تقديم عرض #}
       {% if can_offer %}
       <div class="rounded-xl border bg-indigo-50 dark:bg-indigo-900/20 p-4">
         <div class="flex items-center justify-between gap-3">
@@ -171,7 +180,6 @@
 
       {# بطاقات معلومات سريعة #}
       <div class="grid sm:grid-cols-2 gap-4">
-
         {# المدة/المبلغ #}
         <div class="p-4 rounded-xl border bg-white dark:bg-slate-800">
           <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">المدة/المبلغ</div>
@@ -238,7 +246,7 @@
       </div>
       {% endif %}
 
-      {# ===== بيانات التواصل (بعد اختيار عرض) ===== #}
+      {# ===== بيانات التواصل ===== #}
       {% if req.status != 'new' %}
       <div class="rounded-2xl border bg-white dark:bg-slate-800 p-4">
         <div class="flex items-center justify-between mb-4">
@@ -405,7 +413,7 @@
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-3 flex-wrap">
             <a class="btn btn-secondary" href="{% url 'agreements:open_by_request' req.pk %}">عرض/تحرير الاتفاقية</a>
 
             {% if request.user.id == req.client_id %}
@@ -459,6 +467,21 @@
                       <span class="font-semibold">سبب الرفض:</span> {{ ms.rejected_reason }}
                     </div>
                   {% endif %}
+
+                  <div class="mt-2 text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-2">
+                    {% if ms.invoice %}
+                      <span>الفاتورة: <a class="text-indigo-700 dark:text-indigo-300 hover:underline" href="{% url 'finance:invoice_detail' ms.invoice.id %}">#{{ ms.invoice.id }}</a></span>
+                      <span>الحالة:
+                        {% if ms.invoice.is_paid %}<b class="text-emerald-700 dark:text-emerald-300">مدفوعة</b>
+                        {% elif ms.invoice.is_unpaid %}<b class="text-amber-700 dark:text-amber-300">غير مدفوعة</b>
+                        {% else %}<b>{{ ms.invoice.get_status_display|default:ms.invoice.status }}</b>{% endif %}
+                      </span>
+                      <span>الإصدار: {{ ms.invoice.issued_at|date:"Y-m-d H:i" }}</span>
+                      <span>الاستحقاق: {% if ms.invoice.due_at %}{{ ms.invoice.due_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</span>
+                    {% else %}
+                      <span class="text-slate-500">لا توجد فاتورة بعد — (تظهر بعد اعتماد العميل للمرحلة).</span>
+                    {% endif %}
+                  </div>
                 </div>
 
                 <div class="flex items-center flex-wrap gap-2">
@@ -479,8 +502,7 @@
               </div>
 
               <div class="mt-4 flex flex-wrap items-start gap-3">
-
-                {# الموظف المسند: تسليم المرحلة #}
+                {# الموظف: تسليم المرحلة #}
                 {% if request.user.is_authenticated and request.user.id == req.assigned_employee_id %}
                   {% if not ms.is_approved and not ms.is_paid and not ms.is_rejected and not ms.is_pending_review and not ms.is_delivered %}
                     <form method="post" action="{% url 'agreements:milestone_deliver' ms.id %}#ms-{{ ms.id }}"
@@ -491,11 +513,11 @@
                       <button class="btn btn-secondary">تسليم المرحلة</button>
                     </form>
                   {% else %}
-                    <button class="btn btn-secondary opacity-60 cursor-not-allowed" disabled title="لا يمكن التسليم بعد الاعتماد/الرفض/السداد أو عند انتظار المراجعة">تسليم المرحلة</button>
+                    <button class="btn btn-secondary opacity-60 cursor-not-allowed" disabled title="لا يمكن التسليم الآن">تسليم المرحلة</button>
                   {% endif %}
                 {% endif %}
 
-                {# العميل: اعتماد أو رفض #}
+                {# العميل: اعتماد/رفض #}
                 {% if request.user.is_authenticated and request.user.id == req.client_id %}
                   {% if ms.is_pending_review %}
                     <form method="post" action="{% url 'agreements:milestone_approve' ms.id %}#ms-{{ ms.id }}"
@@ -506,19 +528,19 @@
 
                     <button class="btn btn-danger" data-reject-modal="#rej-{{ ms.id }}">رفض</button>
 
-                    {# مودال الرفض #}
-                    <div id="rej-{{ ms.id }}" class="fixed inset-0 z-50 hidden">
+                    {# مودال الرفض – متاح للكتابة مع إدارة تركيز وز-index مرتفع #}
+                    <div id="rej-{{ ms.id }}" class="fixed inset-0 z-50 hidden" aria-hidden="true" role="dialog" aria-labelledby="rej-title-{{ ms.id }}">
                       <div class="absolute inset-0 bg-black/40" data-close-modal></div>
-                      <div class="mx-auto mt-24 w-[92%] max-w-lg rounded-2xl border bg-white dark:bg-slate-800 shadow-xl overflow-hidden">
+                      <div class="mx-auto mt-24 w-[92%] max-w-lg rounded-2xl border bg-white dark:bg-slate-800 shadow-xl overflow-hidden focus:outline-none">
                         <div class="p-4 border-b bg-rose-50 dark:bg-rose-900/20">
-                          <div class="font-semibold text-rose-700 dark:text-rose-200">رفض المرحلة: {{ ms.title }}</div>
+                          <div id="rej-title-{{ ms.id }}" class="font-semibold text-rose-700 dark:text-rose-200">رفض المرحلة: {{ ms.title }}</div>
                         </div>
                         <form method="post" action="{% url 'agreements:milestone_reject' ms.id %}#ms-{{ ms.id }}"
                               onsubmit="return confirm('سيتم رفض هذه المرحلة مع السبب المدخل. تأكيد الرفض؟');">
                           {% csrf_token %}
                           <div class="p-4 space-y-3">
-                            <label class="text-sm text-slate-700 dark:text-slate-200">سبب الرفض</label>
-                            <textarea name="reason" rows="3" class="input" placeholder="فضلاً اكتب سببًا واضحًا (3 أحرف على الأقل)"></textarea>
+                            <label class="text-sm text-slate-700 dark:text-slate-200" for="rej-text-{{ ms.id }}">سبب الرفض</label>
+                            <textarea id="rej-text-{{ ms.id }}" name="reason" rows="4" class="input" placeholder="فضلاً اكتب سببًا واضحًا (3 أحرف على الأقل)"></textarea>
                             <p class="text-xs text-slate-500 dark:text-slate-400">لن يتم قبول الرفض بدون سبب واضح.</p>
                           </div>
                           <div class="p-4 border-t flex items-center justify-end gap-2">
@@ -546,6 +568,60 @@
             {% endfor %}
           </div>
         </div>
+
+        {# ===== ملخّص الدفعات ===== #}
+        {% if ag.invoices.all %}
+        <div class="rounded-2xl border bg-white/80 dark:bg-slate-900/40 p-4">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="font-semibold text-slate-800 dark:text-slate-100">🧾 الدفعات (الفواتير)</h3>
+            <div class="text-xs text-slate-500 dark:text-slate-400">تتحدّث تلقائيًا بعد اعتماد العميل لكل مرحلة</div>
+          </div>
+          <div class="mt-3 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-start text-slate-600 dark:text-slate-300">
+                  <th class="p-2 text-start">#</th>
+                  <th class="p-2 text-start">المرحلة</th>
+                  <th class="p-2 text-start">المبلغ</th>
+                  <th class="p-2 text-start">الحالة</th>
+                  <th class="p-2 text-start">تاريخ الإصدار</th>
+                  <th class="p-2 text-start">موعد السداد</th>
+                  <th class="p-2 text-start">إجراء</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for inv in ag.invoices.all %}
+                <tr class="border-t">
+                  <td class="p-2">{{ forloop.counter }}</td>
+                  <td class="p-2">{% if inv.milestone %}{{ inv.milestone.title }}{% else %}-{% endif %}</td>
+                  <td class="p-2">{{ inv.amount }}</td>
+                  <td class="p-2">
+                    {% if inv.is_paid %}<span class="badge bg-emerald-100 text-emerald-700">مدفوعة</span>
+                    {% elif inv.is_unpaid %}<span class="badge bg-amber-100 text-amber-700">غير مدفوعة</span>
+                    {% else %}<span class="badge bg-slate-100 text-slate-700">{{ inv.get_status_display|default:inv.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="p-2">{{ inv.issued_at|date:"Y-m-d H:i" }}</td>
+                  <td class="p-2">{% if inv.due_at %}{{ inv.due_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
+                  <td class="p-2">
+                    <a href="{% url 'finance:invoice_detail' inv.pk %}" class="btn btn-xs">فتح</a>
+                    {% if request.user.role == 'finance' or request.user.is_staff %}
+                      <form method="post" action="{% url 'finance:invoice_mark_paid' inv.pk %}" class="inline" onsubmit="return confirm('تأكيد وسم هذه الفاتورة كمدفوعة؟');">
+                        {% csrf_token %}
+                        <button class="btn btn-success btn-xs" {% if inv.is_paid %}disabled{% endif %}>وسم مدفوعة</button>
+                      </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td class="p-2" colspan="7" class="text-slate-500">لا توجد فواتير بعد.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <p class="text-xs text-slate-500 mt-2">* تُنشَأ الفاتورة تلقائيًا بعد اعتماد العميل للمرحلة. نافذة السداد الافتراضية 3 أيام.</p>
+        </div>
+        {% endif %}
         {% endwith %}
       {% else %}
         {% if req.status == 'offer_selected' %}
@@ -605,32 +681,66 @@
 
 </section>
 
-{# سكربت تفعيل المودال + إغلاق التوستات تلقائياً #}
 <script>
-document.addEventListener('click', function(e) {
-  const openBtn = e.target.closest('[data-reject-modal]');
-  if (openBtn) {
-    const sel = openBtn.getAttribute('data-reject-modal');
-    const modal = document.querySelector(sel);
-    if (modal) modal.classList.remove('hidden');
-  }
-  if (e.target.matches('[data-close-modal]')) {
-    const modal = e.target.closest('.fixed.inset-0');
-    if (modal) modal.classList.add('hidden');
-  }
-  const closeAlert = e.target.closest('[data-close-alert]');
-  if (closeAlert) {
-    const wrap = closeAlert.closest('.rounded-xl, .rounded-lg, .rounded-2xl');
-    if (wrap) wrap.remove();
-  }
-});
-setTimeout(function() {
-  const msgs = document.querySelectorAll('#messages-area > *');
-  msgs.forEach(function(el) {
-    el.classList.add('transition', 'duration-500', 'ease-out');
-    el.style.opacity = '0';
-    setTimeout(function(){ el.remove(); }, 600);
+(function () {
+  // Toasts auto-dismiss
+  setTimeout(function() {
+    const msgs = document.querySelectorAll('#messages-area > *');
+    msgs.forEach(function(el) {
+      el.classList.add('transition','duration-500','ease-out');
+      el.style.opacity = '0';
+      setTimeout(function(){ el.remove(); }, 600);
+    });
+  }, 4500);
+
+  // Close toast manually
+  document.addEventListener('click', function(e) {
+    const closeAlert = e.target.closest('[data-close-alert]');
+    if (closeAlert) {
+      const wrap = closeAlert.closest('.rounded-xl, .rounded-lg, .rounded-2xl');
+      if (wrap) wrap.remove();
+    }
   });
-}, 4500);
+
+  // ===== Modals (رفض المرحلة) =====
+  let lastFocused = null;
+  function openModal(modal) {
+    if (!modal) return;
+    lastFocused = document.activeElement;
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.documentElement.classList.add('overflow-y-hidden'); // تثبيت الصفحة
+    const ta = modal.querySelector('textarea');
+    if (ta) { setTimeout(function(){ ta.focus(); ta.select && ta.select(); }, 30); }
+  }
+  function closeModal(modal) {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    document.documentElement.classList.remove('overflow-y-hidden');
+    if (lastFocused && typeof lastFocused.focus === 'function') { lastFocused.focus(); }
+  }
+
+  document.addEventListener('click', function(e) {
+    const openBtn = e.target.closest('[data-reject-modal]');
+    if (openBtn) {
+      const sel = openBtn.getAttribute('data-reject-modal');
+      const modal = document.querySelector(sel);
+      if (modal) openModal(modal);
+    }
+    if (e.target.matches('[data-close-modal]')) {
+      const modal = e.target.closest('.fixed.inset-0');
+      if (modal) closeModal(modal);
+    }
+  });
+
+  // اغلاق بالـ ESC
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const opened = document.querySelector('.fixed.inset-0:not(.hidden)');
+      if (opened) closeModal(opened);
+    }
+  });
+})();
 </script>
 {% endblock %}

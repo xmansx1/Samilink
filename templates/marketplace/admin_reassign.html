@@ -1,21 +1,55 @@
 {% extends "base.html" %}
 {% block title %}إعادة إسناد طلب #{{ req.pk }}{% endblock %}
+
 {% block content %}
-<section class="py-8 max-w-xl mx-auto rtl" dir="rtl">
-  <div class="rounded-2xl border bg-white p-6 shadow">
-    <h1 class="text-xl font-bold mb-4">إعادة إسناد طلب #{{ req.pk }}</h1>
-    <p class="text-slate-600 mb-4">العنوان: <b>{{ req.title }}</b></p>
-    <form method="post" class="space-y-4">
+<section class="py-8 max-w-2xl mx-auto rtl" dir="rtl">
+  <div class="rounded-2xl border bg-white dark:bg-slate-800/80 backdrop-blur p-6 shadow">
+    <header class="mb-6">
+      <h1 class="text-xl font-bold">إعادة إسناد طلب #{{ req.pk }}</h1>
+      <p class="text-slate-600 dark:text-slate-300 mt-1">
+        العنوان: <b>{{ req.title }}</b>
+      </p>
+      <p class="text-slate-600 dark:text-slate-300">
+        المُعين الحالي:
+        <b>{{ req.assigned_to|default:"غير معيّن" }}</b>
+      </p>
+    </header>
+
+    {# أخطاء عامة للنموذج #}
+    {% if form.non_field_errors %}
+      <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 p-3 text-sm">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
+    <form method="post" class="space-y-5">
       {% csrf_token %}
+
       <div>
-        <label class="block mb-1 font-semibold">اختر الموظف</label>
-        {{ form.employee }}
+        <label for="{{ form.employee.id_for_label }}" class="mb-1 inline-block font-semibold">اختر الموظف</label>
+        <div class="mt-1">
+          {{ form.employee }}
+        </div>
         {% if form.employee.errors %}
-          <p class="text-sm text-rose-600">{{ form.employee.errors|join:", " }}</p>
+          <p class="mt-1 text-sm text-rose-600">{{ form.employee.errors|join:", " }}</p>
         {% endif %}
       </div>
+
+      {# حقل ملاحظة اختياري إن وُجد في الفورم (لن يظهر إن لم يكن موجودًا) #}
+      {% if form.note %}
+      <div>
+        <label for="{{ form.note.id_for_label }}" class="mb-1 inline-block font-semibold">ملاحظة (اختياري)</label>
+        <div class="mt-1">
+          {{ form.note }}
+        </div>
+        {% if form.note.errors %}
+          <p class="mt-1 text-sm text-rose-600">{{ form.note.errors|join:", " }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
       <div class="flex items-center gap-3">
-        <button class="btn btn-primary">حفظ</button>
+        <button name="action" value="reassign" class="btn btn-primary">حفظ</button>
         <a class="btn" href="{{ req.get_absolute_url }}">إلغاء</a>
       </div>
     </form>

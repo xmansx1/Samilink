@@ -31,7 +31,7 @@
           <option value="agreement_pending" {% if request.GET.status == 'agreement_pending' %}selected{% endif %}>بانتظار اتفاقية</option>
           <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>قيد التنفيذ</option>
           <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>مكتمل</option>
-          <option value="dispute" {% if request.GET.status == 'dispute' %}selected{% endif %}>نزاع</option>
+          <option value="disputed" {% if request.GET.status == 'disputed' %}selected{% endif %}>نزاع</option>
           <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>ملغي</option>
         </select>
       </div>
@@ -71,14 +71,14 @@
                              {% elif r.status == 'agreement_pending' %}bg-indigo-100 text-indigo-700
                              {% elif r.status == 'in_progress' %}bg-emerald-100 text-emerald-700
                              {% elif r.status == 'completed' %}bg-emerald-200 text-emerald-800
-                             {% elif r.status == 'dispute' %}bg-rose-100 text-rose-700
+                             {% elif r.status == 'disputed' %}bg-rose-100 text-rose-700
                              {% elif r.status == 'cancelled' %}bg-slate-200 text-slate-700
                              {% else %}bg-slate-100 text-slate-700{% endif %}">
                   {{ r.get_status_display|default:r.status }}
                 </span>
               </div>
 
-              <!-- سطر المدة/المبلغ: يبرز قيم العميل أو العرض المختار -->
+              <!-- سطر المدة/المبلغ -->
               <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
                 {% if r.selected_offer %}
                   <span class="px-2 py-1 rounded-lg border bg-amber-50 text-amber-800">
@@ -104,7 +104,7 @@
               <div class="mt-2 text-slate-500 text-xs">
                 تاريخ الطلب: {{ r.created_at|date:"Y-m-d H:i" }}
                 {% if r.updated_at %} • آخر تحديث: {{ r.updated_at|date:"Y-m-d H:i" }}{% endif %}
-                {% if r.assigned_employee %} • الموظف: {{ r.assigned_employee }}{% endif %}
+                {% if r.assigned_to %} • الموظف: {{ r.assigned_to }}{% elif r.selected_offer %} • الموظف: {{ r.selected_offer.employee }}{% endif %}
               </div>
             </div>
             <div class="shrink-0 text-slate-500 text-xs">#{{ r.pk }}</div>
@@ -147,7 +147,7 @@
                              {% elif r.status == 'agreement_pending' %}bg-indigo-100 text-indigo-700
                              {% elif r.status == 'in_progress' %}bg-emerald-100 text-emerald-700
                              {% elif r.status == 'completed' %}bg-emerald-200 text-emerald-800
-                             {% elif r.status == 'dispute' %}bg-rose-100 text-rose-700
+                             {% elif r.status == 'disputed' %}bg-rose-100 text-rose-700
                              {% elif r.status == 'cancelled' %}bg-slate-200 text-slate-700
                              {% else %}bg-slate-100 text-slate-700{% endif %}">
                   {{ r.get_status_display|default:r.status }}
@@ -179,8 +179,8 @@
 
               <!-- الموظف -->
               <td class="p-3 text-slate-700">
-                {% if r.assigned_employee %}
-                  {{ r.assigned_employee }}
+                {% if r.assigned_to %}
+                  {{ r.assigned_to }}
                 {% elif r.selected_offer %}
                   {{ r.selected_offer.employee }}
                 {% else %}

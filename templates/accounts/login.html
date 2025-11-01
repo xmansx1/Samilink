@@ -1,37 +1,50 @@
+{# templates/accounts/login.html #}
 {% extends "base.html" %}
 {% load static %}
 {% block title %}تسجيل الدخول{% endblock %}
 {% block content %}
-<div class="min-h-[70vh] grid place-items-center bg-gradient-to-br from-indigo-50 to-sky-50">
-  <div class="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-slate-100">
-    <h1 class="text-2xl font-bold text-slate-900 mb-2 text-center">تسجيل الدخول</h1>
-    <p class="text-slate-500 text-center mb-6">ادخل بريدك أو جوالك وكلمة المرور</p>
+<div class="min-h-[70vh] grid place-items-center bg-gradient-to-br from-indigo-50 to-sky-50 dark:from-slate-900 dark:to-slate-950">
+  <div class="w-full max-w-md bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-slate-100 dark:border-slate-800">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2 text-center">تسجيل الدخول</h1>
+    <p class="text-slate-500 dark:text-slate-400 text-center mb-6">ادخل بريدك الإلكتروني وكلمة المرور</p>
 
+    {# رسائل Django #}
     {% include "accounts/_messages.html" %}
 
-    <form method="post" novalidate class="space-y-4">
+    <form method="post" novalidate class="space-y-4" action="" autocomplete="on">
       {% csrf_token %}
+
       <div>
-        <label class="block mb-1 text-slate-700">البريد أو الجوال</label>
-        <input name="username" type="text" required
-               class="w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-               placeholder="example@mail.com أو +9665XXXXXXXX أو 05XXXXXXXX">
+        <label for="id_email" class="block mb-1 text-slate-700 dark:text-slate-200">البريد الإلكتروني</label>
+        <input id="id_email" name="email" type="email" required inputmode="email" autocomplete="email"
+               class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+               placeholder="example@mail.com">
       </div>
+
       <div>
-        <label class="block mb-1 text-slate-700">كلمة المرور</label>
-        <input name="password" type="password" required
-               class="w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <label for="id_password" class="block mb-1 text-slate-700 dark:text-slate-200">كلمة المرور</label>
+        <input id="id_password" name="password" type="password" required autocomplete="current-password"
+               class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
       </div>
+
       <div class="flex items-center justify-between">
-        <a class="text-sm text-indigo-600 hover:underline" href="{% url 'accounts:password_reset' %}">نسيت كلمة المرور؟</a>
+        <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <input type="checkbox" name="remember" class="rounded border-slate-300 dark:border-slate-600">
+          تذكرني
+        </label>
+        <a class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline" href="{% url 'accounts:password_reset' %}">
+          نسيت كلمة المرور؟
+        </a>
       </div>
-      <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold transition">
+
+      <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold transition focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500">
         دخول
       </button>
     </form>
 
-    <div class="text-center text-slate-600 mt-6">
-      ليس لديك حساب؟ <a class="text-indigo-600 hover:underline" href="{% url 'accounts:register' %}">إنشاء حساب</a>
+    <div class="text-center text-slate-600 dark:text-slate-300 mt-6">
+      ليس لديك حساب؟
+      <a class="text-indigo-600 dark:text-indigo-400 hover:underline" href="{% url 'accounts:register' %}">إنشاء حساب</a>
     </div>
   </div>
 </div>

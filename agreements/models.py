@@ -198,10 +198,27 @@ class Agreement(models.Model):
         verbose_name_plural = "اتفاقيات"
 
 
+# agreements/models.py  (أو الملف المناسب لديك)
+
+from decimal import Decimal, ROUND_HALF_UP
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.urls import reverse
+from django.utils import timezone
+
+# استورد Agreement من مكانه الصحيح
+# from .agreement_models import Agreement
+# أو إن كان في نفس الملف:
+# from .models import Agreement
+
+
 class Milestone(models.Model):
     """
-    دفعات/مراحل الاتفاقية.
-    تدعم حالات: قيد التنفيذ → تم التسليم → (مرفوض/معتمَد) → مدفوع.
+    دفعات/مراحل الاتفاقية (Transition أحادي المصدر عبر status):
+    PENDING → DELIVERED → (APPROVED | REJECTED) → PAID
+    - إعادة التسليم بعد الرفض: REJECTED → DELIVERED
+    - لا يُسمح بالتسليم/الرفض/الاعتماد بعد السداد، ولا التسليم بعد الاعتماد.
     """
 
     class Status(models.TextChoices):
@@ -212,17 +229,20 @@ class Milestone(models.Model):
         PAID = "paid", "مدفوعة"
 
     agreement = models.ForeignKey(
-        Agreement, on_delete=models.CASCADE, related_name="milestones", verbose_name="الاتفاقية"
+        "agreements.Agreement",  # عدّل إلى المسار الفعلي إن اختلف
+        on_delete=models.CASCADE,
+        related_name="milestones",
+        verbose_name="الاتفاقية",
     )
     title = models.CharField("عنوان الدفعة/المرحلة", max_length=160)
     amount = models.DecimalField("المبلغ (ريال)", max_digits=12, decimal_places=2)
     order = models.PositiveIntegerField("الترتيب", default=1)
     due_days = models.PositiveIntegerField("مستحق بعد (أيام) من البداية", null=True, blank=True)
 
-    # الحالة العامة
+    # الحالة المعتمدة
     status = models.CharField("الحالة", max_length=12, choices=Status.choices, default=Status.PENDING)
 
-    # مسار التنفيذ/التسليم والاعتماد والسداد
+    # آثار/تواقيت
     delivered_at = models.DateTimeField("وقت التسليم", null=True, blank=True)
     delivered_note = models.TextField("ملاحظة التسليم", blank=True)
 
@@ -251,61 +271,53 @@ class Milestone(models.Model):
             models.Index(fields=["paid_at"]),
         ]
         constraints = [
-            models.UniqueConstraint(
-                fields=["agreement", "order"], name="uniq_milestone_order_per_agreement"
-            ),
+            models.UniqueConstraint(fields=["agreement", "order"], name="uniq_milestone_order_per_agreement"),
             models.CheckConstraint(check=models.Q(amount__gte=0), name="milestone_amount_gte_0"),
             models.CheckConstraint(check=models.Q(order__gte=1), name="milestone_order_gte_1"),
         ]
         verbose_name = "دفعة"
         verbose_name_plural = "دفعات"
 
-    # -------- تحقّق حقول --------
+    # -------- تحقّق/تطبيع --------
     def clean(self) -> None:
         if self.amount is None or self.amount < 0:
             raise ValidationError("مبلغ الدفعة يجب أن يكون رقمًا موجبًا أو صفرًا.")
         if self.order < 1:
             raise ValidationError("ترتيب الدفعة يجب أن يكون 1 أو أكبر.")
-        # تنعيم المبلغ
-        if self.amount is not None:
-            self.amount = Decimal(self.amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.amount = Decimal(self.amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    # -------- روابط مساعدة --------
+    # -------- روابط --------
     def get_absolute_url(self) -> str:
         # عدّل الاسم/المسار حسب مشروعك إن لزم
         return reverse("agreements:milestone_detail", kwargs={"pk": self.pk})
 
-    # -------- حالات مساعدة (قراءة فقط) --------
+    # -------- خصائص مشتقة (قراءة فقط) --------
     @property
     def is_delivered(self) -> bool:
         return self.status == self.Status.DELIVERED
 
-    # ⚠️ Backward-compatible setter لمنع AttributeError في أي view قد يكتب: ms.is_delivered = True
     @is_delivered.setter
     def is_delivered(self, value: bool) -> None:
         """
-        مهيّأ للتوافق الخلفي مع شيفرات قديمة كانت تعيّن is_delivered مباشرة.
-        - True: يمر عبر mark_delivered() (يضع الوقت والحالة وينظّف سبب الرفض).
-        - False: يعيدها إلى pending (إن لم تكن مدفوعة)، ويمسح وقت التسليم.
+        توافق خلفي: يسمح لكود قديم بتعيين ms.is_delivered = True/False.
+        - True  → mark_delivered() (مع الحفاظ على note الحالية إن وُجدت).
+        - False → يرجع إلى PENDING إن لم تكن مدفوعة.
         """
         if bool(value):
-            # استخدم الملاحظة الحالية إن وُجدت
-            note = (self.delivered_note or "").strip()
-            self.mark_delivered(note=note)
+            self.mark_delivered(note=(self.delivered_note or "").strip())
         else:
             if self.is_paid:
                 raise ValidationError("لا يمكن إلغاء التسليم بعد السداد.")
-            # الرجوع خطوة للخلف
             self.status = self.Status.PENDING
             self.delivered_at = None
-            # لا نمسح delivered_note (قد تكون مفيدة تاريخيًا)
+            # لا نمسح delivered_note (تاريخيًا مفيدة)، ونمسح سبب الرفض
             self.rejected_reason = ""
             self.save(update_fields=["status", "delivered_at", "rejected_reason"])
 
     @property
     def is_pending_review(self) -> bool:
-        # تعتبر "بانتظار المراجعة" بمجرد وجود delivered_at بدون اعتماد/رفض
-        return bool(self.delivered_at and not self.approved_at and not self.rejected_reason)
+        # تعتبر "بانتظار المراجعة" عندما تكون المرحلة في حالة DELIVERED (قبل اعتماد/رفض)
+        return self.status == self.Status.DELIVERED
 
     @property
     def is_approved(self) -> bool:
@@ -319,25 +331,39 @@ class Milestone(models.Model):
     def is_paid(self) -> bool:
         return self.status == self.Status.PAID
 
-    # -------- أفعال الحالة --------
+    # -------- أفعال الحالة (Transitions) --------
     def mark_delivered(self, note: str = "") -> None:
         """
-        يعلّم المرحلة كـ "مُسلّمة" من قبل الموظف.
+        تسليم/إعادة تسليم من الموظف:
+        - يمنع لو الحالة APPROVED/PAID.
+        - يزيل أي رفض سابق، ويحدّث وقت وملاحظة التسليم.
+        - النتيجة: DELIVERED (بانتظار مراجعة العميل).
         """
         if self.is_approved or self.is_paid:
             raise ValidationError("لا يمكن تسليم مرحلة معتمَدة أو مدفوعة.")
         self.status = self.Status.DELIVERED
         self.delivered_at = timezone.now()
         self.delivered_note = (note or "").strip()
+        # إعادة فتح المراجعة: تصفير الرفض/الاعتماد
         self.rejected_reason = ""
-        self.save(update_fields=["status", "delivered_at", "delivered_note", "rejected_reason"])
+        self.approved_at = None
+        self.approved_by = None
+        self.save(update_fields=[
+            "status", "delivered_at", "delivered_note",
+            "rejected_reason", "approved_at", "approved_by"
+        ])
 
     def approve(self, user) -> None:
         """
-        يعتمد المرحلة (من العميل أو الأدمن).
+        اعتماد العميل (أو من يملك الصلاحية):
+        - مسموح فقط عندما تكون DELIVERED.
+        - يمنع إن كانت PAID.
+        - النتيجة: APPROVED.
         """
         if self.is_paid:
             raise ValidationError("لا يمكن اعتماد مرحلة مدفوعة.")
+        if not self.is_pending_review:
+            raise ValidationError("لا يمكن الاعتماد قبل التسليم.")
         self.status = self.Status.APPROVED
         self.approved_at = timezone.now()
         self.approved_by = user
@@ -346,14 +372,20 @@ class Milestone(models.Model):
 
     def reject(self, reason: str) -> None:
         """
-        يرفض المرحلة مع سبب واضح.
+        رفض العميل:
+        - مسموح فقط عندما تكون DELIVERED (بانتظار المراجعة).
+        - يمنع إن كانت PAID.
+        - النتيجة: REJECTED (مع سبب واضح).
         """
         reason = (reason or "").strip()
         if len(reason) < 3:
             raise ValidationError("سبب الرفض قصير جدًا.")
         if self.is_paid:
             raise ValidationError("لا يمكن رفض مرحلة مدفوعة.")
+        if not self.is_pending_review:
+            raise ValidationError("لا يمكن الرفض قبل التسليم.")
         self.status = self.Status.REJECTED
+        # لا نعدّل delivered_at/note (تبقى محفوظة كأثر)
         self.approved_at = None
         self.approved_by = None
         self.rejected_reason = reason
@@ -361,7 +393,8 @@ class Milestone(models.Model):
 
     def mark_paid(self) -> None:
         """
-        تعليم المرحلة كمدفوعة (مالية).
+        تعليم المرحلة كمدفوعة (مالية):
+        - مسموح فقط عندما تكون APPROVED.
         """
         if not self.is_approved:
             raise ValidationError("لا يمكن السداد قبل اعتماد المرحلة.")
